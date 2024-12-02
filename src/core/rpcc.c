@@ -28,6 +28,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ============================================================================*/
 
 #include <locale.h>
+#include <dlfcn.h>
 #include <gtk/gtk.h>
 #include <glib/gi18n.h>
 #include "rpcc.h"
@@ -40,11 +41,14 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 /* Global data */
 /*----------------------------------------------------------------------------*/
 
-GtkWidget *dlg;
+GtkWidget *dlg, *nb;
 
 /*----------------------------------------------------------------------------*/
 /* Function prototypes */
 /*----------------------------------------------------------------------------*/
+
+const char *(*plugin_name) (void);
+GtkWidget *(*get_plugin) (void);
 
 /*----------------------------------------------------------------------------*/
 /* Main function */
@@ -53,6 +57,8 @@ GtkWidget *dlg;
 int main (int argc, char* argv[])
 {
     GtkBuilder *builder;
+    GtkWidget *label, *page;
+    void *phandle;
 
     setlocale (LC_ALL, "");
     bindtextdomain (GETTEXT_PACKAGE, PACKAGE_LOCALE_DIR);
@@ -65,13 +71,25 @@ int main (int argc, char* argv[])
     builder = gtk_builder_new_from_file (PACKAGE_DATA_DIR "/ui/rpcc.ui");
 
     dlg = (GtkWidget *) gtk_builder_get_object (builder, "dlg");
+    nb = (GtkWidget *) gtk_builder_get_object (builder, "notebook");
 
     g_object_unref (builder);
+
+    /* load a plugin... */
+    phandle = dlopen ("/usr/lib/aarch64-linux-gnu/rpcc/libtestpl.so", RTLD_LAZY);
+    plugin_name = dlsym (phandle, "plugin_name");
+    get_plugin = dlsym (phandle, "get_plugin");
+
+    label = gtk_label_new (plugin_name ());
+    page = get_plugin ();
+    gtk_notebook_insert_page (GTK_NOTEBOOK (nb), page, label, -1);
 
     /* run the dialog */
     if (gtk_dialog_run (GTK_DIALOG (dlg)) != GTK_RESPONSE_OK)
     {
     }
+
+    dlclose (phandle);
 
     gtk_widget_destroy (dlg);
 
