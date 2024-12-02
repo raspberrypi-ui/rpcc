@@ -1,0 +1,10 @@
+[Desktop Entry]
+Type=Application
+Name=Control Centre
+Icon=preferences-desktop-peripherals
+TryExec=rpcc
+Exec=rpcc
+Comment=Configure Raspberry Pi Desktop
+StartupNotify=true
+Terminal=false
+Categories=GTK;Settings;HardwareSettings;X-LXDE-Settings;
