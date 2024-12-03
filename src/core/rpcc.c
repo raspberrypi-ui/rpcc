@@ -47,6 +47,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 /*----------------------------------------------------------------------------*/
 
 static int (*plugin_tabs) (void);
+static void (*init_plugin) (void);
 static const char *(*plugin_name) (int tab);
 static GtkWidget *(*get_plugin) (int tab);
 static void load_plugin (GtkWidget *nb, const char *filename);
@@ -66,9 +67,12 @@ static void load_plugin (GtkWidget *nb, const char *filename)
     path = g_build_filename (PLUGIN_PATH, filename, NULL);
 
     phandle = dlopen (path, RTLD_LAZY);
+    init_plugin = dlsym (phandle, "init_plugin");
     plugin_tabs = dlsym (phandle, "plugin_tabs");
     plugin_name = dlsym (phandle, "plugin_name");
     get_plugin = dlsym (phandle, "get_plugin");
+
+    init_plugin ();
 
     for (tab = 0; tab < plugin_tabs (); tab++)
     {
@@ -78,8 +82,6 @@ static void load_plugin (GtkWidget *nb, const char *filename)
     }
 
     g_free (path);
-
-    dlclose (phandle);
 }
 
 /*----------------------------------------------------------------------------*/
@@ -124,6 +126,8 @@ int main (int argc, char* argv[])
     }
 
     gtk_widget_destroy (dlg);
+
+    // close the library handles here...
 
     return 0;
 }
