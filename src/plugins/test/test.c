@@ -35,3 +35,8 @@ GtkWidget *get_plugin (int tab)
 
     return plugin;
 }
+
+void free_plugin (void)
+{
+    g_object_unref (builder);
+}

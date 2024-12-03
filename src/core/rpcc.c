@@ -42,6 +42,8 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 /* Global data */
 /*----------------------------------------------------------------------------*/
 
+GList *plugin_handles = NULL;
+
 /*----------------------------------------------------------------------------*/
 /* Function prototypes */
 /*----------------------------------------------------------------------------*/
@@ -51,6 +53,7 @@ static void (*init_plugin) (void);
 static const char *(*plugin_name) (int tab);
 static GtkWidget *(*get_plugin) (int tab);
 static void load_plugin (GtkWidget *nb, const char *filename);
+static void (*free_plugin) (void);
 
 /*----------------------------------------------------------------------------*/
 /* Helpers */
@@ -65,8 +68,9 @@ static void load_plugin (GtkWidget *nb, const char *filename)
 
     if (!strstr (filename, ".so")) return;
     path = g_build_filename (PLUGIN_PATH, filename, NULL);
-
     phandle = dlopen (path, RTLD_LAZY);
+    g_free (path);
+
     init_plugin = dlsym (phandle, "init_plugin");
     plugin_tabs = dlsym (phandle, "plugin_tabs");
     plugin_name = dlsym (phandle, "plugin_name");
@@ -81,7 +85,14 @@ static void load_plugin (GtkWidget *nb, const char *filename)
         gtk_notebook_insert_page (GTK_NOTEBOOK (nb), page, label, -1);
     }
 
-    g_free (path);
+    plugin_handles = g_list_append (plugin_handles, phandle);
+}
+
+static void free_plugins (void *phandle, gpointer)
+{
+    free_plugin = dlsym (phandle, "free_plugin");
+    free_plugin ();
+    dlclose (phandle);
 }
 
 /*----------------------------------------------------------------------------*/
@@ -128,6 +139,7 @@ int main (int argc, char* argv[])
     gtk_widget_destroy (dlg);
 
     // close the library handles here...
+    g_list_foreach (plugin_handles, free_plugins, NULL);
 
     return 0;
 }
