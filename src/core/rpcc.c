@@ -29,6 +29,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include <locale.h>
 #include <dlfcn.h>
+#include <dirent.h>
 #include <gtk/gtk.h>
 #include <glib/gi18n.h>
 #include "rpcc.h"
@@ -41,14 +42,36 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 /* Global data */
 /*----------------------------------------------------------------------------*/
 
-GtkWidget *dlg, *nb;
-
 /*----------------------------------------------------------------------------*/
 /* Function prototypes */
 /*----------------------------------------------------------------------------*/
 
-const char *(*plugin_name) (void);
-GtkWidget *(*get_plugin) (void);
+static const char *(*plugin_name) (void);
+static GtkWidget *(*get_plugin) (void);
+static void load_plugin (GtkWidget *nb, const char *filename);
+
+/*----------------------------------------------------------------------------*/
+/* Helpers */
+/*----------------------------------------------------------------------------*/
+
+static void load_plugin (GtkWidget *nb, const char *filename)
+{
+    GtkWidget *label, *page;
+    void *phandle;
+    char *path;
+
+    if (!strstr (filename, ".so")) return;
+    path = g_build_filename (PLUGIN_PATH, filename, NULL);
+
+    phandle = dlopen (path, RTLD_LAZY);
+    plugin_name = dlsym (phandle, "plugin_name");
+    get_plugin = dlsym (phandle, "get_plugin");
+
+    label = gtk_label_new (plugin_name ());
+    page = get_plugin ();
+    gtk_notebook_insert_page (GTK_NOTEBOOK (nb), page, label, -1);
+    g_free (path);
+}
 
 /*----------------------------------------------------------------------------*/
 /* Main function */
@@ -57,8 +80,9 @@ GtkWidget *(*get_plugin) (void);
 int main (int argc, char* argv[])
 {
     GtkBuilder *builder;
-    GtkWidget *label, *page;
-    void *phandle;
+    GtkWidget *dlg, *nb;
+    DIR *d;
+    struct dirent *dir;
 
     setlocale (LC_ALL, "");
     bindtextdomain (GETTEXT_PACKAGE, PACKAGE_LOCALE_DIR);
@@ -75,21 +99,22 @@ int main (int argc, char* argv[])
 
     g_object_unref (builder);
 
-    /* load a plugin... */
-    phandle = dlopen ("/usr/lib/aarch64-linux-gnu/rpcc/libtestpl.so", RTLD_LAZY);
-    plugin_name = dlsym (phandle, "plugin_name");
-    get_plugin = dlsym (phandle, "get_plugin");
-
-    label = gtk_label_new (plugin_name ());
-    page = get_plugin ();
-    gtk_notebook_insert_page (GTK_NOTEBOOK (nb), page, label, -1);
+    // loop thorough plugins...
+    if ((d = opendir (PLUGIN_PATH)))
+    {
+        while ((dir = readdir (d)))
+        {
+            load_plugin (nb, dir->d_name);
+        }
+    }
+    closedir (d);
 
     /* run the dialog */
     if (gtk_dialog_run (GTK_DIALOG (dlg)) != GTK_RESPONSE_OK)
     {
     }
 
-    dlclose (phandle);
+    //dlclose (phandle);
 
     gtk_widget_destroy (dlg);
 
