@@ -118,6 +118,7 @@ int main (int argc, char* argv[])
 
     dlg = (GtkWidget *) gtk_builder_get_object (builder, "dlg");
     nb = (GtkWidget *) gtk_builder_get_object (builder, "notebook");
+    gtk_window_set_default_size (GTK_WINDOW (dlg), 500, 400);
 
     g_object_unref (builder);
 
@@ -132,13 +133,11 @@ int main (int argc, char* argv[])
     closedir (d);
 
     /* run the dialog */
-    if (gtk_dialog_run (GTK_DIALOG (dlg)) != GTK_RESPONSE_OK)
-    {
-    }
+    gtk_dialog_run (GTK_DIALOG (dlg));
 
     gtk_widget_destroy (dlg);
 
-    // close the library handles here...
+    /* close the plugins cleanly */
     g_list_foreach (plugin_handles, free_plugins, NULL);
 
     return 0;

@@ -6,7 +6,6 @@
     <property name="can-focus">False</property>
     <property name="border-width">6</property>
     <property name="title" translatable="yes">Control Centre</property>
-    <property name="resizable">False</property>
     <property name="window-position">center</property>
     <property name="icon-name">preferences-desktop-peripherals</property>
     <property name="type-hint">dialog</property>
@@ -22,23 +21,11 @@
             <property name="can-focus">False</property>
             <property name="layout-style">end</property>
             <child>
-              <object class="GtkButton" id="cancel">
-                <property name="label" translatable="yes">_Cancel</property>
-                <property name="use-action-appearance">False</property>
-                <property name="visible">True</property>
-                <property name="can-focus">True</property>
-                <property name="receives-default">True</property>
-                <property name="use-underline">True</property>
-              </object>
-              <packing>
-                <property name="expand">False</property>
-                <property name="fill">False</property>
-                <property name="position">0</property>
-              </packing>
+              <placeholder/>
             </child>
             <child>
               <object class="GtkButton" id="ok">
-                <property name="label" translatable="yes">_OK</property>
+                <property name="label" translatable="yes">_Close</property>
                 <property name="use-action-appearance">False</property>
                 <property name="visible">True</property>
                 <property name="can-focus">True</property>
@@ -86,7 +73,6 @@
       </object>
     </child>
     <action-widgets>
-      <action-widget response="-6">cancel</action-widget>
       <action-widget response="-5">ok</action-widget>
     </action-widgets>
   </object>
