@@ -46,8 +46,9 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 /* Function prototypes */
 /*----------------------------------------------------------------------------*/
 
-static const char *(*plugin_name) (void);
-static GtkWidget *(*get_plugin) (void);
+static int (*plugin_tabs) (void);
+static const char *(*plugin_name) (int tab);
+static GtkWidget *(*get_plugin) (int tab);
 static void load_plugin (GtkWidget *nb, const char *filename);
 
 /*----------------------------------------------------------------------------*/
@@ -59,18 +60,26 @@ static void load_plugin (GtkWidget *nb, const char *filename)
     GtkWidget *label, *page;
     void *phandle;
     char *path;
+    int tab;
 
     if (!strstr (filename, ".so")) return;
     path = g_build_filename (PLUGIN_PATH, filename, NULL);
 
     phandle = dlopen (path, RTLD_LAZY);
+    plugin_tabs = dlsym (phandle, "plugin_tabs");
     plugin_name = dlsym (phandle, "plugin_name");
     get_plugin = dlsym (phandle, "get_plugin");
 
-    label = gtk_label_new (plugin_name ());
-    page = get_plugin ();
-    gtk_notebook_insert_page (GTK_NOTEBOOK (nb), page, label, -1);
+    for (tab = 0; tab < plugin_tabs (); tab++)
+    {
+        label = gtk_label_new (plugin_name (tab));
+        page = get_plugin (tab);
+        gtk_notebook_insert_page (GTK_NOTEBOOK (nb), page, label, -1);
+    }
+
     g_free (path);
+
+    dlclose (phandle);
 }
 
 /*----------------------------------------------------------------------------*/
@@ -99,7 +108,7 @@ int main (int argc, char* argv[])
 
     g_object_unref (builder);
 
-    // loop thorough plugins...
+    /* loop thorough plugins */
     if ((d = opendir (PLUGIN_PATH)))
     {
         while ((dir = readdir (d)))
@@ -113,8 +122,6 @@ int main (int argc, char* argv[])
     if (gtk_dialog_run (GTK_DIALOG (dlg)) != GTK_RESPONSE_OK)
     {
     }
-
-    //dlclose (phandle);
 
     gtk_widget_destroy (dlg);
 

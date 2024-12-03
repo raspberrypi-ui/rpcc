@@ -4,12 +4,17 @@
 
 GtkWidget *plugin;
 
-const char *plugin_name (void)
+int plugin_tabs (void)
+{
+    return 1;
+}
+
+const char *plugin_name (int tab)
 {
     return "Test plugin";
 }
 
-GtkWidget *get_plugin (void)
+GtkWidget *get_plugin (int tab)
 {
     GtkBuilder *builder;
     GtkWidget *window;
