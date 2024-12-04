@@ -36,11 +36,19 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 /* Typedefs and macros */
 /*----------------------------------------------------------------------------*/
 
+typedef enum {
+    WM_OPENBOX,
+    WM_WAYFIRE,
+    WM_LABWC } wm_type;
+
 /*----------------------------------------------------------------------------*/
 /* Global data */
 /*----------------------------------------------------------------------------*/
 
-GList *plugin_handles = NULL;
+static wm_type wm;
+static GList *plugin_handles = NULL;
+static GtkWidget *dlg, *msg_dlg;
+static gulong draw_id;
 
 /*----------------------------------------------------------------------------*/
 /* Function prototypes */
@@ -50,11 +58,19 @@ static int (*plugin_tabs) (void);
 static void (*init_plugin) (void);
 static const char *(*tab_name) (int tab);
 static GtkWidget *(*get_tab) (int tab);
-static void load_plugin (GtkWidget *nb, const char *filename);
 static void (*free_plugin) (void);
 
+static void load_plugin (GtkWidget *nb, const char *filename);
+static void free_plugins (void *phandle, gpointer);
+static void message (char *msg);
+static gboolean ok_main (GtkButton *button, gpointer data);
+static gboolean close_prog (GtkWidget *widget, GdkEvent *event, gpointer data);
+static gboolean init_window (gpointer);
+static gboolean event (GtkWidget *wid, GdkEventWindowState *ev, gpointer data);
+static gboolean draw (GtkWidget *wid, cairo_t *cr, gpointer data);
+
 /*----------------------------------------------------------------------------*/
-/* Helpers */
+/* Plugin management */
 /*----------------------------------------------------------------------------*/
 
 static void load_plugin (GtkWidget *nb, const char *filename)
@@ -101,22 +117,51 @@ static void free_plugins (void *phandle, gpointer)
 }
 
 /*----------------------------------------------------------------------------*/
-/* Main function */
+/* Message box */
 /*----------------------------------------------------------------------------*/
 
-int main (int argc, char* argv[])
+static void message (char *msg)
+{
+    GtkWidget *wid;
+    GtkBuilder *builder = gtk_builder_new_from_file (PACKAGE_DATA_DIR "/ui/rpcc.ui");
+
+    msg_dlg = (GtkWidget *) gtk_builder_get_object (builder, "modal");
+    if (dlg) gtk_window_set_transient_for (GTK_WINDOW (msg_dlg), GTK_WINDOW (dlg));
+
+    wid = (GtkWidget *) gtk_builder_get_object (builder, "modal_msg");
+    gtk_label_set_text (GTK_LABEL (wid), msg);
+
+    gtk_widget_show (msg_dlg);
+
+    g_object_unref (builder);
+}
+
+/*----------------------------------------------------------------------------*/
+/* Handlers */
+/*----------------------------------------------------------------------------*/
+
+static gboolean ok_main (GtkButton *button, gpointer data)
+{
+    gtk_main_quit ();
+    return FALSE;
+}
+
+static gboolean close_prog (GtkWidget *widget, GdkEvent *event, gpointer data)
+{
+    gtk_main_quit ();
+    return TRUE;
+}
+
+/*----------------------------------------------------------------------------*/
+/* Startup */
+/*----------------------------------------------------------------------------*/
+
+static gboolean init_window (gpointer)
 {
     GtkBuilder *builder;
-    GtkWidget *dlg, *nb;
+    GtkWidget *nb;
     DIR *d;
     struct dirent *dir;
-
-    setlocale (LC_ALL, "");
-    bindtextdomain (GETTEXT_PACKAGE, PACKAGE_LOCALE_DIR);
-    bind_textdomain_codeset (GETTEXT_PACKAGE, "UTF-8");
-    textdomain (GETTEXT_PACKAGE);
-
-    gtk_init (&argc, &argv);
 
     /* create the dialog */
     builder = gtk_builder_new_from_file (PACKAGE_DATA_DIR "/ui/rpcc.ui");
@@ -124,6 +169,9 @@ int main (int argc, char* argv[])
     dlg = (GtkWidget *) gtk_builder_get_object (builder, "dlg");
     nb = (GtkWidget *) gtk_builder_get_object (builder, "notebook");
     gtk_window_set_default_size (GTK_WINDOW (dlg), 500, 400);
+
+    g_signal_connect (dlg, "delete_event", G_CALLBACK (close_prog), NULL);
+    g_signal_connect (gtk_builder_get_object (builder, "btn_close"), "clicked", G_CALLBACK (ok_main), NULL);
 
     g_object_unref (builder);
 
@@ -137,13 +185,61 @@ int main (int argc, char* argv[])
     }
     closedir (d);
 
-    /* run the dialog */
-    gtk_dialog_run (GTK_DIALOG (dlg));
+    gtk_widget_show (dlg);
+    gtk_widget_destroy (msg_dlg);
 
-    gtk_widget_destroy (dlg);
+    return FALSE;
+}
+
+static gboolean event (GtkWidget *wid, GdkEventWindowState *ev, gpointer data)
+{
+    if (ev->type == GDK_WINDOW_STATE)
+    {
+        if (ev->changed_mask == GDK_WINDOW_STATE_FOCUSED
+            && ev->new_window_state & GDK_WINDOW_STATE_FOCUSED)
+                g_idle_add (init_window, NULL);
+    }
+    return FALSE;
+}
+
+static gboolean draw (GtkWidget *wid, cairo_t *cr, gpointer data)
+{
+    g_signal_handler_disconnect (wid, draw_id);
+    g_idle_add (init_window, NULL);
+    return FALSE;
+}
+
+/*----------------------------------------------------------------------------*/
+/* Main function */
+/*----------------------------------------------------------------------------*/
+
+int main (int argc, char* argv[])
+{
+    setlocale (LC_ALL, "");
+    bindtextdomain (GETTEXT_PACKAGE, PACKAGE_LOCALE_DIR);
+    bind_textdomain_codeset (GETTEXT_PACKAGE, "UTF-8");
+    textdomain (GETTEXT_PACKAGE);
+
+    if (getenv ("WAYLAND_DISPLAY"))
+    {
+        if (getenv ("WAYFIRE_CONFIG_FILE")) wm = WM_WAYFIRE;
+        else wm = WM_LABWC;
+    }
+    else wm = WM_OPENBOX;
+
+    gtk_init (&argc, &argv);
+
+    /* show wait message */
+    message (_("Loading configuration - please wait..."));
+    if (wm != WM_OPENBOX) draw_id = g_signal_connect (msg_dlg, "event", G_CALLBACK (event), NULL);
+    else draw_id = g_signal_connect (msg_dlg, "draw", G_CALLBACK (draw), NULL);
+
+    gtk_main ();
 
     /* close the plugins cleanly */
     g_list_foreach (plugin_handles, free_plugins, NULL);
+
+    gtk_widget_destroy (dlg);
 
     return 0;
 }

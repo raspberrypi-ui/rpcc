@@ -2,29 +2,26 @@
 <!-- Generated with glade 3.40.0 -->
 <interface>
   <requires lib="gtk+" version="3.20"/>
-  <object class="GtkDialog" id="dlg">
+  <object class="GtkWindow" id="dlg">
     <property name="can-focus">False</property>
     <property name="border-width">6</property>
     <property name="title" translatable="yes">Control Centre</property>
     <property name="window-position">center</property>
     <property name="icon-name">preferences-desktop-peripherals</property>
     <property name="type-hint">dialog</property>
-    <child internal-child="vbox">
+    <child>
       <object class="GtkBox" id="vbox">
         <property name="visible">True</property>
         <property name="can-focus">False</property>
         <property name="orientation">vertical</property>
         <property name="spacing">6</property>
-        <child internal-child="action_area">
+        <child>
           <object class="GtkButtonBox" id="dialog-action_area">
             <property name="visible">True</property>
             <property name="can-focus">False</property>
             <property name="layout-style">end</property>
             <child>
-              <placeholder/>
-            </child>
-            <child>
-              <object class="GtkButton" id="ok">
+              <object class="GtkButton" id="btn_close">
                 <property name="label" translatable="yes">_Close</property>
                 <property name="use-action-appearance">False</property>
                 <property name="visible">True</property>
@@ -35,7 +32,7 @@
               <packing>
                 <property name="expand">False</property>
                 <property name="fill">False</property>
-                <property name="position">1</property>
+                <property name="position">0</property>
               </packing>
             </child>
           </object>
@@ -72,8 +69,103 @@
         </child>
       </object>
     </child>
-    <action-widgets>
-      <action-widget response="-5">ok</action-widget>
-    </action-widgets>
+  </object>
+  <object class="GtkWindow" id="modal">
+    <property name="name">pixbox</property>
+    <property name="can-focus">False</property>
+    <property name="resizable">False</property>
+    <property name="modal">True</property>
+    <property name="window-position">center-on-parent</property>
+    <property name="default-width">340</property>
+    <property name="default-height">0</property>
+    <property name="destroy-with-parent">True</property>
+    <property name="type-hint">dialog</property>
+    <property name="skip-taskbar-hint">True</property>
+    <property name="skip-pager-hint">True</property>
+    <property name="decorated">True</property>
+    <child>
+      <object class="GtkBox">
+        <property name="visible">True</property>
+        <property name="can-focus">False</property>
+        <property name="margin-left">20</property>
+        <property name="margin-right">20</property>
+        <property name="margin-top">20</property>
+        <property name="margin-bottom">20</property>
+        <property name="orientation">vertical</property>
+        <property name="spacing">20</property>
+        <child>
+          <object class="GtkLabel" id="modal_msg">
+            <property name="width-request">300</property>
+            <property name="visible">True</property>
+            <property name="can-focus">False</property>
+            <property name="wrap">True</property>
+          </object>
+          <packing>
+            <property name="expand">False</property>
+            <property name="fill">True</property>
+            <property name="position">0</property>
+          </packing>
+        </child>
+        <child>
+          <object class="GtkProgressBar" id="modal_pb">
+            <property name="can-focus">False</property>
+          </object>
+          <packing>
+            <property name="expand">False</property>
+            <property name="fill">True</property>
+            <property name="position">1</property>
+          </packing>
+        </child>
+        <child>
+          <object class="GtkBox" id="modal_buttons">
+            <property name="can-focus">False</property>
+            <property name="spacing">20</property>
+            <child>
+              <object class="GtkButton" id="modal_cancel">
+                <property name="label" translatable="yes">_Cancel</property>
+                <property name="width-request">100</property>
+                <property name="can-focus">True</property>
+                <property name="receives-default">True</property>
+                <property name="use-underline">True</property>
+              </object>
+              <packing>
+                <property name="expand">True</property>
+                <property name="fill">False</property>
+                <property name="position">0</property>
+              </packing>
+            </child>
+            <child>
+              <object class="GtkButton" id="modal_ok">
+                <property name="label" translatable="yes">_OK</property>
+                <property name="width-request">100</property>
+                <property name="can-focus">True</property>
+                <property name="receives-default">True</property>
+                <property name="use-underline">True</property>
+              </object>
+              <packing>
+                <property name="expand">True</property>
+                <property name="fill">False</property>
+                <property name="position">1</property>
+              </packing>
+            </child>
+          </object>
+          <packing>
+            <property name="expand">False</property>
+            <property name="fill">True</property>
+            <property name="position">2</property>
+          </packing>
+        </child>
+      </object>
+    </child>
+    <child type="titlebar">
+      <object class="GtkHeaderBar">
+        <property name="title" translatable="yes">Control Centre</property>
+        <property name="visible">False</property>
+        <property name="can-focus">False</property>
+        <child>
+          <placeholder/>
+        </child>
+      </object>
+    </child>
   </object>
 </interface>
