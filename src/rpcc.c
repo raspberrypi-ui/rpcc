@@ -236,10 +236,10 @@ int main (int argc, char* argv[])
 
     gtk_main ();
 
+    gtk_widget_destroy (dlg);
+
     /* close the plugins cleanly */
     g_list_foreach (plugin_handles, free_plugins, NULL);
-
-    gtk_widget_destroy (dlg);
 
     return 0;
 }
