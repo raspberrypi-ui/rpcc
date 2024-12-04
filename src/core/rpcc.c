@@ -74,8 +74,8 @@ static void load_plugin (GtkWidget *nb, const char *filename)
 
     init_plugin = dlsym (phandle, "init_plugin");
     plugin_tabs = dlsym (phandle, "plugin_tabs");
-    tab_name = dlsym (phandle, "plugin_name");
-    get_tab = dlsym (phandle, "get_plugin");
+    tab_name = dlsym (phandle, "tab_name");
+    get_tab = dlsym (phandle, "get_tab");
 
     init_plugin ();
 

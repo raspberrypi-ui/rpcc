@@ -19,12 +19,12 @@ int plugin_tabs (void)
     return 1;
 }
 
-const char *plugin_name (int tab)
+const char *tab_name (int tab)
 {
     return "Test plugin";
 }
 
-GtkWidget *get_plugin (int tab)
+GtkWidget *get_tab (int tab)
 {
     GtkWidget *window, *plugin;
 
