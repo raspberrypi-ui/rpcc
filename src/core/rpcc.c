@@ -1,7 +1,5 @@
 /*============================================================================
 Copyright (c) 2024 Raspberry Pi Holdings Ltd.
-Some code based on lxinput from the LXDE project :
-Copyright (c) 2009-2014 PCMan, martyj19, Julien Lavergne, Andri Grytsenko
 All rights reserved.
 
 Redistribution and use in source and binary forms, with or without
