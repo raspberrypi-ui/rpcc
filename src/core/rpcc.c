@@ -50,8 +50,8 @@ GList *plugin_handles = NULL;
 
 static int (*plugin_tabs) (void);
 static void (*init_plugin) (void);
-static const char *(*plugin_name) (int tab);
-static GtkWidget *(*get_plugin) (int tab);
+static const char *(*tab_name) (int tab);
+static GtkWidget *(*get_tab) (int tab);
 static void load_plugin (GtkWidget *nb, const char *filename);
 static void (*free_plugin) (void);
 
@@ -64,7 +64,8 @@ static void load_plugin (GtkWidget *nb, const char *filename)
     GtkWidget *label, *page;
     void *phandle;
     char *path;
-    int tab;
+    int count, tab;
+    const char *name, *tablabel;
 
     if (!strstr (filename, ".so")) return;
     path = g_build_filename (PLUGIN_PATH, filename, NULL);
@@ -73,16 +74,22 @@ static void load_plugin (GtkWidget *nb, const char *filename)
 
     init_plugin = dlsym (phandle, "init_plugin");
     plugin_tabs = dlsym (phandle, "plugin_tabs");
-    plugin_name = dlsym (phandle, "plugin_name");
-    get_plugin = dlsym (phandle, "get_plugin");
+    tab_name = dlsym (phandle, "plugin_name");
+    get_tab = dlsym (phandle, "get_plugin");
 
     init_plugin ();
 
     for (tab = 0; tab < plugin_tabs (); tab++)
     {
-        label = gtk_label_new (plugin_name (tab));
-        page = get_plugin (tab);
-        gtk_notebook_insert_page (GTK_NOTEBOOK (nb), page, label, -1);
+        name = tab_name (tab);
+        label = gtk_label_new (name);
+        page = get_tab (tab);
+        for (count = 0; count < gtk_notebook_get_n_pages (GTK_NOTEBOOK (nb)); count++)
+        {
+            tablabel = gtk_notebook_get_tab_label_text (GTK_NOTEBOOK (nb), gtk_notebook_get_nth_page (GTK_NOTEBOOK (nb), count));
+            if (strcmp (tablabel, name) > 0) break;
+        }
+        gtk_notebook_insert_page (GTK_NOTEBOOK (nb), page, label, count);
     }
 
     plugin_handles = g_list_append (plugin_handles, phandle);
