@@ -49,6 +49,7 @@ static wm_type wm;
 static GList *plugin_handles = NULL;
 static GtkWidget *dlg, *msg_dlg;
 static gulong draw_id;
+static gboolean reboot = FALSE;
 
 /*----------------------------------------------------------------------------*/
 /* Function prototypes */
@@ -58,10 +59,15 @@ static int (*plugin_tabs) (void);
 static void (*init_plugin) (void);
 static const char *(*tab_name) (int tab);
 static GtkWidget *(*get_tab) (int tab);
+static gboolean (*reboot_needed) (void);
 static void (*free_plugin) (void);
 
 static void load_plugin (GtkWidget *nb, const char *filename);
 static void free_plugins (void *phandle, gpointer);
+static void reboot_check (void *phandle, gpointer);
+static void close_with_prompt (void);
+static gboolean close_app (GtkButton *button, gpointer);
+static gboolean close_app_reboot (GtkButton *button, gpointer);
 static void message (char *msg);
 static gboolean ok_main (GtkButton *button, gpointer data);
 static gboolean close_prog (GtkWidget *widget, GdkEvent *event, gpointer data);
@@ -117,6 +123,66 @@ static void free_plugins (void *phandle, gpointer)
 }
 
 /*----------------------------------------------------------------------------*/
+/* Reboot prompt */
+/*----------------------------------------------------------------------------*/
+
+static void reboot_check (void *phandle, gpointer)
+{
+    reboot_needed = dlsym (phandle, "reboot_needed");
+    if (reboot_needed ()) reboot = TRUE;
+}
+
+static void close_with_prompt (void)
+{
+    g_list_foreach (plugin_handles, reboot_check, NULL);
+
+    gtk_widget_destroy (dlg);
+    if (reboot)
+    {
+        GtkWidget *wid;
+        GtkBuilder *builder = gtk_builder_new_from_file (PACKAGE_DATA_DIR "/ui/rpcc.ui");
+
+        msg_dlg = (GtkWidget *) gtk_builder_get_object (builder, "modal");
+
+        wid = (GtkWidget *) gtk_builder_get_object (builder, "modal_msg");
+        gtk_label_set_text (GTK_LABEL (wid), _("The changes you have made require the Raspberry Pi to be rebooted to take effect.\n\nWould you like to reboot now? "));
+
+        wid = (GtkWidget *) gtk_builder_get_object (builder, "modal_cancel");
+        gtk_button_set_label (GTK_BUTTON (wid), _("_No"));
+        g_signal_connect (wid, "clicked", G_CALLBACK (close_app), NULL);
+        gtk_widget_show (wid);
+
+        wid = (GtkWidget *) gtk_builder_get_object (builder, "modal_ok");
+        gtk_button_set_label (GTK_BUTTON (wid), _("_Yes"));
+        g_signal_connect (wid, "clicked", G_CALLBACK (close_app_reboot), NULL);
+        gtk_widget_show (wid);
+
+        wid = (GtkWidget *) gtk_builder_get_object (builder, "modal_buttons");
+        gtk_widget_show (wid);
+
+        gtk_widget_show (msg_dlg);
+
+        g_object_unref (builder);
+    }
+    else close_app (NULL, NULL);
+}
+
+static gboolean close_app (GtkButton *button, gpointer)
+{
+    gtk_widget_destroy (msg_dlg);
+    gtk_main_quit ();
+    return FALSE;
+}
+
+static gboolean close_app_reboot (GtkButton *button, gpointer)
+{
+    gtk_widget_destroy (msg_dlg);
+    gtk_main_quit ();
+    system ("reboot");
+    return FALSE;
+}
+
+/*----------------------------------------------------------------------------*/
 /* Message box */
 /*----------------------------------------------------------------------------*/
 
@@ -137,18 +203,18 @@ static void message (char *msg)
 }
 
 /*----------------------------------------------------------------------------*/
-/* Handlers */
+/* Button handlers */
 /*----------------------------------------------------------------------------*/
 
 static gboolean ok_main (GtkButton *button, gpointer data)
 {
-    gtk_main_quit ();
+    close_with_prompt ();
     return FALSE;
 }
 
 static gboolean close_prog (GtkWidget *widget, GdkEvent *event, gpointer data)
 {
-    gtk_main_quit ();
+    close_with_prompt ();
     return TRUE;
 }
 
@@ -235,8 +301,6 @@ int main (int argc, char* argv[])
     else draw_id = g_signal_connect (msg_dlg, "draw", G_CALLBACK (draw), NULL);
 
     gtk_main ();
-
-    gtk_widget_destroy (dlg);
 
     /* close the plugins cleanly */
     g_list_foreach (plugin_handles, free_plugins, NULL);
