@@ -164,7 +164,7 @@ static void close_with_prompt (void)
 
         g_object_unref (builder);
     }
-    else close_app (NULL, NULL);
+    else gtk_main_quit ();
 }
 
 static gboolean close_app (GtkButton *button, gpointer)
