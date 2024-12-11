@@ -1,0 +1,5 @@
+[encoding: UTF-8]
+src/rpcc.c
+[type: gettext/glade] data/rpcc.ui
+# files added by intltool-prepare
+data/rpcc.desktop.in
