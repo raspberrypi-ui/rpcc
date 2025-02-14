@@ -65,7 +65,6 @@ static void (*free_plugin) (void);
 static void load_plugin (GtkWidget *nb, const char *filename);
 static void free_plugins (void *phandle, gpointer);
 static void call_func (void *phandle, gpointer data);
-static void call_plugin_func (char *name);
 static void reboot_check (void *phandle, gpointer);
 static void close_with_prompt (void);
 static gboolean close_app (GtkButton *button, gpointer);
@@ -130,7 +129,7 @@ static void call_func (void *phandle, gpointer data)
     if (func) func ();
 }
 
-static void call_plugin_func (char *name)
+void call_plugin_func (char *name)
 {
     g_list_foreach (plugin_handles, call_func, name);
 }

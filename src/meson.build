@@ -9,4 +9,4 @@ deps = [ gtk ]
 
 proj_args = '-DPLUGIN_PATH="' + get_option ('prefix') + '/' + get_option('libdir') + '/rpcc/"'
 
-executable ('rpcc', sources, dependencies: deps, c_args : proj_args, install: true)
+executable ('rpcc', sources, dependencies: deps, c_args : proj_args, install: true, export_dynamic: true)
