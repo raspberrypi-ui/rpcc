@@ -50,6 +50,8 @@ static GList *plugin_handles = NULL;
 static GtkWidget *dlg, *msg_dlg;
 static gulong draw_id;
 static gboolean reboot = FALSE;
+static gboolean tab_set = FALSE;
+static char *st_tab;
 
 /*----------------------------------------------------------------------------*/
 /* Function prototypes */
@@ -58,6 +60,7 @@ static gboolean reboot = FALSE;
 static int (*plugin_tabs) (void);
 static void (*init_plugin) (void);
 static const char *(*tab_name) (int tab);
+static const char *(*tab_id) (int tab);
 static GtkWidget *(*get_tab) (int tab);
 static gboolean (*reboot_needed) (void);
 static void (*free_plugin) (void);
@@ -95,6 +98,7 @@ static void load_plugin (GtkWidget *nb, const char *filename)
     init_plugin = dlsym (phandle, "init_plugin");
     plugin_tabs = dlsym (phandle, "plugin_tabs");
     tab_name = dlsym (phandle, "tab_name");
+    tab_id = dlsym (phandle, "tab_id");
     get_tab = dlsym (phandle, "get_tab");
 
     init_plugin ();
@@ -110,6 +114,11 @@ static void load_plugin (GtkWidget *nb, const char *filename)
             if (strcmp (tablabel, name) > 0) break;
         }
         gtk_notebook_insert_page (GTK_NOTEBOOK (nb), page, label, count);
+        if (st_tab && !g_strcmp0 (st_tab, tab_id (tab)))
+        {
+            gtk_notebook_set_current_page (GTK_NOTEBOOK (nb), count);
+            tab_set = TRUE;
+        }
     }
 
     plugin_handles = g_list_append (plugin_handles, phandle);
@@ -262,6 +271,8 @@ static gboolean init_window (gpointer)
     }
     closedir (d);
 
+    if (!tab_set) gtk_notebook_set_current_page (GTK_NOTEBOOK (nb), 0);
+
     gtk_widget_show (dlg);
     gtk_widget_destroy (msg_dlg);
 
@@ -292,6 +303,9 @@ int main (int argc, char* argv[])
         else wm = WM_LABWC;
     }
     else wm = WM_OPENBOX;
+
+    if (argc > 1) st_tab = g_strdup (argv[1]);
+    else st_tab = NULL;
 
     gtk_init (&argc, &argv);
 
