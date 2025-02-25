@@ -47,11 +47,12 @@ typedef enum {
 
 static wm_type wm;
 static GList *plugin_handles = NULL;
-static GtkWidget *dlg, *msg_dlg;
+static GtkWidget *dlg, *msg_dlg, *nb;
 static gulong draw_id;
 static gboolean reboot = FALSE;
 static gboolean tab_set = FALSE;
 static char *st_tab;
+static int tabs_x;
 
 /*----------------------------------------------------------------------------*/
 /* Function prototypes */
@@ -75,6 +76,7 @@ static gboolean close_app_reboot (GtkButton *button, gpointer);
 static void message (char *msg);
 static gboolean ok_main (GtkButton *button, gpointer data);
 static gboolean close_prog (GtkWidget *widget, GdkEvent *event, gpointer data);
+static gboolean scroll (GtkWidget *, GdkEventScroll *ev, gpointer);
 static gboolean init_window (gpointer);
 static gboolean draw (GtkWidget *wid, cairo_t *cr, gpointer data);
 
@@ -238,6 +240,20 @@ static gboolean close_prog (GtkWidget *widget, GdkEvent *event, gpointer data)
     return TRUE;
 }
 
+static gboolean scroll (GtkWidget *, GdkEventScroll *ev, gpointer)
+{
+    int page;
+
+    if (ev->x < tabs_x)
+    {
+        page = gtk_notebook_get_current_page (GTK_NOTEBOOK (nb));
+        if (ev->direction == 0 && page > 0) page--;
+        if (ev->direction == 1 && page < gtk_notebook_get_n_pages (GTK_NOTEBOOK (nb)) - 1) page++;
+        gtk_notebook_set_current_page (GTK_NOTEBOOK (nb), page);
+    }
+    return FALSE;
+}
+
 /*----------------------------------------------------------------------------*/
 /* Startup */
 /*----------------------------------------------------------------------------*/
@@ -245,7 +261,6 @@ static gboolean close_prog (GtkWidget *widget, GdkEvent *event, gpointer data)
 static gboolean init_window (gpointer)
 {
     GtkBuilder *builder;
-    GtkWidget *nb;
     DIR *d;
     struct dirent *dir;
 
@@ -258,6 +273,7 @@ static gboolean init_window (gpointer)
 
     g_signal_connect (dlg, "delete_event", G_CALLBACK (close_prog), NULL);
     g_signal_connect (gtk_builder_get_object (builder, "btn_close"), "clicked", G_CALLBACK (ok_main), NULL);
+    g_signal_connect (dlg, "scroll-event", G_CALLBACK (scroll), NULL);
 
     g_object_unref (builder);
 
@@ -275,6 +291,17 @@ static gboolean init_window (gpointer)
 
     gtk_widget_show (dlg);
     gtk_widget_destroy (msg_dlg);
+
+    /* find the x position of the child widgets - anything to the left is tabs... */
+    GList *l = gtk_container_get_children (GTK_CONTAINER (nb));
+    if (l)
+    {
+        GtkAllocation alloc;
+        gtk_widget_get_allocation (GTK_WIDGET (g_list_nth_data (l, 1)), &alloc);
+        tabs_x = alloc.x;
+        g_list_free (l);
+    }
+    else tabs_x = 0;
 
     return FALSE;
 }
