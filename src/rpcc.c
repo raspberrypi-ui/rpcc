@@ -162,6 +162,10 @@ static void close_with_prompt (void)
     if (reboot)
     {
         GtkWidget *wid;
+
+        // the plugins need to use their own textdomain to load translations for builders, so set it back here
+        textdomain (GETTEXT_PACKAGE);
+
         GtkBuilder *builder = gtk_builder_new_from_file (PACKAGE_DATA_DIR "/ui/rpcc.ui");
 
         msg_dlg = (GtkWidget *) gtk_builder_get_object (builder, "modal");
