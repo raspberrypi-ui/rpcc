@@ -144,6 +144,13 @@ void call_plugin_func (char *name)
     g_list_foreach (plugin_handles, call_func, name);
 }
 
+const char *dgetfixt (const char *domain, const char *msgctxid)
+{
+    const char *text = dgettext (domain, msgctxid);
+    if (g_strcmp0 (msgctxid, text)) return text;
+    return strchr (msgctxid, 0x04) + 1;
+}
+
 /*----------------------------------------------------------------------------*/
 /* Reboot prompt */
 /*----------------------------------------------------------------------------*/
