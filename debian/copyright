@@ -3,7 +3,7 @@ Upstream-Name: rpcc
 Source: https://github.com/raspberrypi-ui/rpcc.git
 
 Files: *
-Copyright: 2025 Raspberry Pi Ltd.
+Copyright: 2025 Raspberry Pi
 License: BSD-3-Clause
 
 License: BSD-3-Clause
