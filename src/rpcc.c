@@ -53,6 +53,7 @@ static gboolean reboot = FALSE;
 static gboolean tab_set = FALSE;
 static char *st_tab;
 static int tabs_x;
+static GdkCursor *watch;
 
 /*----------------------------------------------------------------------------*/
 /* Function prototypes */
@@ -149,6 +150,20 @@ const char *dgetfixt (const char *domain, const char *msgctxid)
     const char *text = dgettext (domain, msgctxid);
     if (g_strcmp0 (msgctxid, text)) return text;
     return strchr (msgctxid, 0x04) + 1;
+}
+
+/*----------------------------------------------------------------------------*/
+/* Busy cursor */
+/*----------------------------------------------------------------------------*/
+
+void set_watch_cursor (void)
+{
+    gdk_window_set_cursor (gtk_widget_get_window (dlg), watch);
+}
+
+void clear_watch_cursor (void)
+{
+    gdk_window_set_cursor (gtk_widget_get_window (dlg), NULL);
 }
 
 /*----------------------------------------------------------------------------*/
@@ -346,6 +361,8 @@ int main (int argc, char* argv[])
     else st_tab = NULL;
 
     gtk_init (&argc, &argv);
+
+    watch = gdk_cursor_new_for_display (gdk_display_get_default (), GDK_WATCH);
 
     /* show wait message */
     message (_("Loading configuration - please wait..."));
