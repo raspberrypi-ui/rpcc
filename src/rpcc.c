@@ -287,6 +287,7 @@ static gboolean scroll (GtkWidget *, GdkEventScroll *ev, gpointer)
 static gboolean init_window (gpointer)
 {
     GtkBuilder *builder;
+    GdkWindow *win;
     DIR *d;
     struct dirent *dir;
 
@@ -317,6 +318,8 @@ static gboolean init_window (gpointer)
 
     gtk_widget_show (dlg);
     gtk_widget_destroy (msg_dlg);
+    win = gtk_widget_get_window (dlg);
+    gdk_window_set_events (win, gdk_window_get_events (win) | GDK_SCROLL_MASK);
 
     /* find the x position of the child widgets - anything to the left is tabs... */
     GList *l = gtk_container_get_children (GTK_CONTAINER (nb));
