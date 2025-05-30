@@ -1,7 +1,7 @@
 [Desktop Entry]
 Type=Application
 Name=Control Centre
-Icon=preferences-desktop-peripherals
+Icon=applications-system
 TryExec=rpcc
 Exec=rpcc
 Comment=Configure Raspberry Pi Desktop
