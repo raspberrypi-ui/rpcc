@@ -51,6 +51,7 @@ static GtkWidget *dlg, *msg_dlg, *nb;
 static gulong draw_id;
 static gboolean reboot = FALSE;
 static gboolean tab_set = FALSE;
+static gboolean wifi_ctry = FALSE;
 static char *st_tab;
 static int tabs_x;
 static GdkCursor *watch;
@@ -117,10 +118,19 @@ static void load_plugin (GtkWidget *nb, const char *filename)
             if (strcmp (tablabel, name) > 0) break;
         }
         gtk_notebook_insert_page (GTK_NOTEBOOK (nb), page, label, count);
-        if (st_tab && !g_strcmp0 (st_tab, tab_id (tab)))
+        if (st_tab)
         {
-            gtk_notebook_set_current_page (GTK_NOTEBOOK (nb), count);
-            tab_set = TRUE;
+            if (!g_strcmp0 (st_tab, tab_id (tab)))
+            {
+                gtk_notebook_set_current_page (GTK_NOTEBOOK (nb), count);
+                tab_set = TRUE;
+            }
+            else if (!g_strcmp0 (st_tab, "wifi_country") && !g_strcmp0 (tab_id (tab), "localisation"))
+            {
+                gtk_notebook_set_current_page (GTK_NOTEBOOK (nb), count);
+                tab_set = TRUE;
+                wifi_ctry = TRUE;
+            }
         }
     }
 
@@ -331,6 +341,8 @@ static gboolean init_window (gpointer)
         g_list_free (l);
     }
     else tabs_x = 0;
+
+    if (wifi_ctry) call_plugin_func ("on_set_wifi");
 
     return FALSE;
 }
