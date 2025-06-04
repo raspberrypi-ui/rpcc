@@ -7,7 +7,7 @@
     <property name="border-width">6</property>
     <property name="title" translatable="yes">Control Centre</property>
     <property name="window-position">center</property>
-    <property name="icon-name">preferences-desktop-peripherals</property>
+    <property name="icon-name">applications-system</property>
     <property name="type-hint">dialog</property>
     <child>
       <object class="GtkBox" id="vbox">
