@@ -124,8 +124,14 @@ static void load_plugin (GtkWidget *nb, const char *filename)
         name = tab_name (tab);
         label = gtk_label_new (name);
 #ifdef SHOW_ICONS
+        PangoFontDescription *font_desc;
+        GtkStyleContext *sc = gtk_widget_get_style_context (nb);
+        gtk_style_context_get (sc, gtk_style_context_get_state (sc), GTK_STYLE_PROPERTY_FONT, &font_desc, NULL);
+        int font_height = pango_font_description_get_size (font_desc) / PANGO_SCALE;
+        pango_font_description_free (font_desc);
+
         icon = gtk_image_new ();
-        pixbuf = gtk_icon_theme_load_icon (gtk_icon_theme_get_default (), icon_name (tab), 32, GTK_ICON_LOOKUP_FORCE_SIZE, NULL);
+        pixbuf = gtk_icon_theme_load_icon (gtk_icon_theme_get_default (), icon_name (tab), font_height < 12 ? 24 : 32, GTK_ICON_LOOKUP_FORCE_SIZE, NULL);
         if (pixbuf)
         {
             gtk_image_set_from_pixbuf (GTK_IMAGE (icon), pixbuf);
