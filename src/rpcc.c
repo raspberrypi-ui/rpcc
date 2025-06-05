@@ -41,6 +41,8 @@ typedef enum {
     WM_WAYFIRE,
     WM_LABWC } wm_type;
 
+#define SHOW_ICONS
+
 /*----------------------------------------------------------------------------*/
 /* Global data */
 /*----------------------------------------------------------------------------*/
@@ -67,6 +69,9 @@ static const char *(*tab_id) (int tab);
 static GtkWidget *(*get_tab) (int tab);
 static gboolean (*reboot_needed) (void);
 static void (*free_plugin) (void);
+#ifdef SHOW_ICONS
+static const char *(*icon_name) (int tab);
+#endif
 
 static void load_plugin (GtkWidget *nb, const char *filename);
 static void free_plugins (void *phandle, gpointer);
@@ -93,6 +98,10 @@ static void load_plugin (GtkWidget *nb, const char *filename)
     char *path;
     int count, tab;
     const char *name, *tablabel;
+#ifdef SHOW_ICONS
+    GtkWidget *icon, *box;
+    GdkPixbuf *pixbuf;
+#endif
 
     if (!strstr (filename, ".so")) return;
     path = g_build_filename (PLUGIN_PATH, filename, NULL);
@@ -104,6 +113,9 @@ static void load_plugin (GtkWidget *nb, const char *filename)
     tab_name = dlsym (phandle, "tab_name");
     tab_id = dlsym (phandle, "tab_id");
     get_tab = dlsym (phandle, "get_tab");
+#ifdef SHOW_ICONS
+    icon_name = dlsym (phandle, "icon_name");
+#endif
 
     init_plugin ();
 
@@ -111,13 +123,37 @@ static void load_plugin (GtkWidget *nb, const char *filename)
     {
         name = tab_name (tab);
         label = gtk_label_new (name);
+#ifdef SHOW_ICONS
+        icon = gtk_image_new ();
+        pixbuf = gtk_icon_theme_load_icon (gtk_icon_theme_get_default (), icon_name (tab), 32, GTK_ICON_LOOKUP_FORCE_SIZE, NULL);
+        if (pixbuf)
+        {
+            gtk_image_set_from_pixbuf (GTK_IMAGE (icon), pixbuf);
+            g_object_unref (pixbuf);
+        }
+
+        box = gtk_box_new (GTK_ORIENTATION_HORIZONTAL, 5);
+        gtk_box_pack_start (GTK_BOX (box), icon, FALSE, FALSE, 0);
+        gtk_box_pack_start (GTK_BOX (box), label, FALSE, FALSE, 0);
+        gtk_widget_show_all (box);
+#endif
         page = get_tab (tab);
         for (count = 0; count < gtk_notebook_get_n_pages (GTK_NOTEBOOK (nb)); count++)
         {
+#ifdef SHOW_ICONS
+            GList *list = gtk_container_get_children (GTK_CONTAINER (gtk_notebook_get_tab_label (GTK_NOTEBOOK (nb), gtk_notebook_get_nth_page (GTK_NOTEBOOK (nb), count))));
+            tablabel = gtk_label_get_label (GTK_LABEL (g_list_last (list)->data));
+            g_list_free (list);
+#else
             tablabel = gtk_notebook_get_tab_label_text (GTK_NOTEBOOK (nb), gtk_notebook_get_nth_page (GTK_NOTEBOOK (nb), count));
-            if (strcmp (tablabel, name) > 0) break;
+#endif
+            if (g_strcmp0 (tablabel, name) > 0) break;
         }
+#ifdef SHOW_ICONS
+        gtk_notebook_insert_page (GTK_NOTEBOOK (nb), page, box, count);
+#else
         gtk_notebook_insert_page (GTK_NOTEBOOK (nb), page, label, count);
+#endif
         if (st_tab)
         {
             if (!g_strcmp0 (st_tab, tab_id (tab)))
