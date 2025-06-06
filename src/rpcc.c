@@ -41,8 +41,6 @@ typedef enum {
     WM_WAYFIRE,
     WM_LABWC } wm_type;
 
-#define SHOW_ICONS
-
 /*----------------------------------------------------------------------------*/
 /* Global data */
 /*----------------------------------------------------------------------------*/
@@ -69,13 +67,12 @@ static const char *(*tab_id) (int tab);
 static GtkWidget *(*get_tab) (int tab);
 static gboolean (*reboot_needed) (void);
 static void (*free_plugin) (void);
-#ifdef SHOW_ICONS
 static const char *(*icon_name) (int tab);
-#endif
 
 static void load_plugin (GtkWidget *nb, const char *filename);
 static void free_plugins (void *phandle, gpointer);
 static void call_func (void *phandle, gpointer data);
+static void update_icons (GtkWidget *, gpointer);
 static void reboot_check (void *phandle, gpointer);
 static void close_with_prompt (void);
 static gboolean close_app (GtkButton *button, gpointer);
@@ -91,17 +88,16 @@ static gboolean draw (GtkWidget *wid, cairo_t *cr, gpointer data);
 /* Plugin management */
 /*----------------------------------------------------------------------------*/
 
-static void load_plugin (GtkWidget *nb, const char *filename)
+static void load_plugin (GtkWidget *, const char *filename)
 {
-    GtkWidget *label, *page;
+    GtkWidget *label, *page, *icon, *box;
     void *phandle;
     char *path;
-    int count, tab;
+    int count, tab, font_height;
     const char *name, *tablabel;
-#ifdef SHOW_ICONS
-    GtkWidget *icon, *box;
     GdkPixbuf *pixbuf;
-#endif
+    PangoFontDescription *font_desc;
+    GtkStyleContext *sc;
 
     if (!strstr (filename, ".so")) return;
     path = g_build_filename (PLUGIN_PATH, filename, NULL);
@@ -113,25 +109,23 @@ static void load_plugin (GtkWidget *nb, const char *filename)
     tab_name = dlsym (phandle, "tab_name");
     tab_id = dlsym (phandle, "tab_id");
     get_tab = dlsym (phandle, "get_tab");
-#ifdef SHOW_ICONS
     icon_name = dlsym (phandle, "icon_name");
-#endif
 
     init_plugin ();
+
+    sc = gtk_widget_get_style_context (nb);
+    gtk_style_context_get (sc, gtk_style_context_get_state (sc), GTK_STYLE_PROPERTY_FONT, &font_desc, NULL);
+    font_height = pango_font_description_get_size (font_desc) / PANGO_SCALE;
+    pango_font_description_free (font_desc);
 
     for (tab = 0; tab < plugin_tabs (); tab++)
     {
         name = tab_name (tab);
         label = gtk_label_new (name);
-#ifdef SHOW_ICONS
-        PangoFontDescription *font_desc;
-        GtkStyleContext *sc = gtk_widget_get_style_context (nb);
-        gtk_style_context_get (sc, gtk_style_context_get_state (sc), GTK_STYLE_PROPERTY_FONT, &font_desc, NULL);
-        int font_height = pango_font_description_get_size (font_desc) / PANGO_SCALE;
-        pango_font_description_free (font_desc);
 
         icon = gtk_image_new ();
-        pixbuf = gtk_icon_theme_load_icon (gtk_icon_theme_get_default (), icon_name (tab), font_height < 12 ? 24 : 32, GTK_ICON_LOOKUP_FORCE_SIZE, NULL);
+        gtk_widget_set_name (icon, icon_name (tab));
+        pixbuf = gtk_icon_theme_load_icon (gtk_icon_theme_get_default (), gtk_widget_get_name (icon), font_height < 12 ? 24 : 32, GTK_ICON_LOOKUP_FORCE_SIZE, NULL);
         if (pixbuf)
         {
             gtk_image_set_from_pixbuf (GTK_IMAGE (icon), pixbuf);
@@ -142,24 +136,16 @@ static void load_plugin (GtkWidget *nb, const char *filename)
         gtk_box_pack_start (GTK_BOX (box), icon, FALSE, FALSE, 0);
         gtk_box_pack_start (GTK_BOX (box), label, FALSE, FALSE, 0);
         gtk_widget_show_all (box);
-#endif
+
         page = get_tab (tab);
         for (count = 0; count < gtk_notebook_get_n_pages (GTK_NOTEBOOK (nb)); count++)
         {
-#ifdef SHOW_ICONS
             GList *list = gtk_container_get_children (GTK_CONTAINER (gtk_notebook_get_tab_label (GTK_NOTEBOOK (nb), gtk_notebook_get_nth_page (GTK_NOTEBOOK (nb), count))));
             tablabel = gtk_label_get_label (GTK_LABEL (g_list_last (list)->data));
             g_list_free (list);
-#else
-            tablabel = gtk_notebook_get_tab_label_text (GTK_NOTEBOOK (nb), gtk_notebook_get_nth_page (GTK_NOTEBOOK (nb), count));
-#endif
             if (g_strcmp0 (tablabel, name) > 0) break;
         }
-#ifdef SHOW_ICONS
         gtk_notebook_insert_page (GTK_NOTEBOOK (nb), page, box, count);
-#else
-        gtk_notebook_insert_page (GTK_NOTEBOOK (nb), page, label, count);
-#endif
         if (st_tab)
         {
             if (!g_strcmp0 (st_tab, tab_id (tab)))
@@ -202,6 +188,35 @@ const char *dgetfixt (const char *domain, const char *msgctxid)
     const char *text = dgettext (domain, msgctxid);
     if (g_strcmp0 (msgctxid, text)) return text;
     return strchr (msgctxid, 0x04) + 1;
+}
+
+static void update_icons (GtkWidget *, gpointer)
+{
+    GtkWidget *icon;
+    GdkPixbuf *pixbuf;
+    int count, font_height;
+    PangoFontDescription *font_desc;
+    GtkStyleContext *sc;
+    GList *list;
+
+    sc = gtk_widget_get_style_context (nb);
+    gtk_style_context_get (sc, gtk_style_context_get_state (sc), GTK_STYLE_PROPERTY_FONT, &font_desc, NULL);
+    font_height = pango_font_description_get_size (font_desc) / PANGO_SCALE;
+    pango_font_description_free (font_desc);
+
+    for (count = 0; count < gtk_notebook_get_n_pages (GTK_NOTEBOOK (nb)); count++)
+    {
+        list = gtk_container_get_children (GTK_CONTAINER (gtk_notebook_get_tab_label (GTK_NOTEBOOK (nb), gtk_notebook_get_nth_page (GTK_NOTEBOOK (nb), count))));
+        icon = GTK_WIDGET (g_list_first (list)->data);
+        g_list_free (list);
+
+        pixbuf = gtk_icon_theme_load_icon (gtk_icon_theme_get_default (), gtk_widget_get_name (icon), font_height < 12 ? 24 : 32, GTK_ICON_LOOKUP_FORCE_SIZE, NULL);
+        if (pixbuf)
+        {
+            gtk_image_set_from_pixbuf (GTK_IMAGE (icon), pixbuf);
+            g_object_unref (pixbuf);
+        }
+    }
 }
 
 /*----------------------------------------------------------------------------*/
@@ -385,6 +400,7 @@ static gboolean init_window (gpointer)
     else tabs_x = 0;
 
     if (wifi_ctry) call_plugin_func ("on_set_wifi");
+    g_signal_connect (nb, "style-updated", G_CALLBACK (update_icons), NULL);
 
     return FALSE;
 }
