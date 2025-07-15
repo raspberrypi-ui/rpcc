@@ -1,3 +1,9 @@
+rpcc (0.2) trixie; urgency=medium
+
+  * Fix dependencies
+
+ -- Simon Long <simon@raspberrypi.com>  Tue, 15 Jul 2025 15:08:46 +0100
+
 rpcc (0.1) trixie; urgency=medium
 
   * Initial release.

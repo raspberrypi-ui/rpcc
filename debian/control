@@ -8,6 +8,6 @@ Homepage: http://raspberrypi.com/
 
 Package: rpcc
 Architecture: any
-Depends: ${shlibs:Depends}, ${misc:Depends}, libgtk-3-0 (>= 3.24)
+Depends: ${shlibs:Depends}, ${misc:Depends}
 Description: Raspberry Pi Control Centre
  Extensible preferences application for Raspberry Pi Desktop
