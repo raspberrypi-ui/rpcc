@@ -9,7 +9,7 @@ Homepage: http://raspberrypi.com/
 Package: rpcc
 Architecture: any
 Depends: ${shlibs:Depends}, ${misc:Depends}
-Breaks: rpd-preferences (<< 1.0)
-Replaces: rpd-preferences (<< 1.0)
+Breaks: rpd-common (<< 1.0)
+Replaces: rpd-common (<< 1.0)
 Description: Raspberry Pi Control Centre
  Extensible preferences application for Raspberry Pi Desktop
