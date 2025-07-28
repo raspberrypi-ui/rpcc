@@ -9,5 +9,7 @@ Homepage: http://raspberrypi.com/
 Package: rpcc
 Architecture: any
 Depends: ${shlibs:Depends}, ${misc:Depends}
+Breaks: rpd-metas (<< 1.0)
+Replaces: rpd-metas (<< 1.0)
 Description: Raspberry Pi Control Centre
  Extensible preferences application for Raspberry Pi Desktop

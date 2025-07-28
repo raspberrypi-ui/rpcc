@@ -1,3 +1,9 @@
+rpcc (0.3) trixie; urgency=medium
+
+  * Add Breaks and Replaces for preliminary meta package
+
+ -- Simon Long <simon@raspberrypi.com>  Mon, 28 Jul 2025 12:09:50 +0100
+
 rpcc (0.2) trixie; urgency=medium
 
   * Fix dependencies
