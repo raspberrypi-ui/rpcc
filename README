@@ -1,8 +1,8 @@
 Raspberry Pi Control Centre - an extensible settings application for the Raspberry Pi Desktop
 
-rpcc is a settings application which loads pages at runtime from plugin modules.
+rpcc is a settings application which loads tab pages at runtime from plugin modules.
 
-A number of packages contain plugins which are installed as standard: 
+A number of packages contain plugins which are installed as standard on Raspberry Pi images: 
  - pipanel - appearance settings
  - rc-gui - Raspberry Pi Configuration
  - raindrop - screen layout
@@ -13,49 +13,49 @@ Creating a plugin
 -----------------
 
 An rpcc plugin is an .so shared object file. Plugins should be placed in the
-directory /usr/lib/<architecture>/rpcc and can have any name.
+directory /usr/lib/<architecture>/rpcc and can have any filename.
 
-A plugin must export the following functions:
+A plugin must export the following functions, which are called by rpcc:
 
 void init_plugin (void)
     - Called when the plugin is first loaded to perform any initialisation it requires,
       including setting translation domain.
-    
+
 int plugin_tabs (void)
-    - Should return the number of tab pages the plugin provides.
-    
+    - Should return the number of tab pages the plugin provides. Must be 1 or greater.
+
 const char *tab_name (int tab)
     - For the numbered tab, return the title which should be displayed for it. International
       translations for these should be included in the plugin; use the C_ macro with the
       context "tab" to define these names.
-    
+
 const char *icon_name (int tab)
     - For the numbered tab, return the name of the icon in a loaded icon theme which should
       be displayed for it.
-    
+
 const char *tab_id (int tab)
     - For the numbered tab, return a unique ID string which can be used to identify the tab.
       This is optional - the ID is only used if direct access to the tab is needed by
       executing "rpcc <tab_id>", which will then launch the application with that tab open.
       Return NULL for any tabs for which this is not required.
-      
+
 GtkWidget *get_tab (int tab)
     - For the numbered tab, return the widget (usually a box) containing the controls.
       The widget must have no parent when it is returned, so may need to be removed (using
       gtk_container_remove) from any parent in which it is defined, such as a GtkWindow
       toplevel in a UI file. The widget will be displayed in the relevant tab of rpcc.
-      All controls should take effect in real time, with the a busy cursor displayed by the
+      All controls should take effect in real time, with a busy mouse cursor displayed by the
       plugin if required.
-    
+
 gboolean reboot_needed (void)
     - Called when the application is closed to tidy up and determine if any control change
       made while the tab was running requires a reboot. Should return TRUE if a reboot is
       required; FALSE otherwise.
-      
+
 void free_plugin (void)
     - Called when the application is closed to unload the plugin resources from memory.
 
-Any of the example projects listed above can be used as examples of how this should work.
+Any of the projects listed above can be used as examples of how this should work.
 
 How to build
 ------------
