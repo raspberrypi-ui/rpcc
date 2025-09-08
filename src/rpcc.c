@@ -28,6 +28,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <locale.h>
 #include <dlfcn.h>
 #include <dirent.h>
+#include <sys/stat.h>
 #include <gtk/gtk.h>
 #include <glib/gi18n.h>
 #include "rpcc.h"
@@ -81,6 +82,8 @@ static void message (char *msg);
 static gboolean ok_main (GtkButton *button, gpointer data);
 static gboolean close_prog (GtkWidget *widget, GdkEvent *event, gpointer data);
 static gboolean scroll (GtkWidget *, GdkEventScroll *ev, gpointer);
+static void load_config (int *w, int *h, int *tab);
+static void save_config (void);
 static gboolean init_window (gpointer);
 static gboolean draw (GtkWidget *wid, cairo_t *cr, gpointer data);
 
@@ -245,6 +248,7 @@ static void reboot_check (void *phandle, gpointer)
 
 static void close_with_prompt (void)
 {
+    save_config ();
     g_list_foreach (plugin_handles, reboot_check, NULL);
 
     gtk_widget_destroy (dlg);
@@ -348,6 +352,74 @@ static gboolean scroll (GtkWidget *, GdkEventScroll *ev, gpointer)
 }
 
 /*----------------------------------------------------------------------------*/
+/* Load / save config */
+/*----------------------------------------------------------------------------*/
+
+static void load_config (int *w, int *h, int *tab)
+{
+    char *conffile;
+    GKeyFile *kf;
+    GError *err;
+    int val;
+
+    *w = 500;
+    *h = 400;
+    *tab = 0;
+
+    conffile = g_build_filename (g_get_user_config_dir (), "rpcc", "config.ini", NULL);
+    kf = g_key_file_new ();
+    if (g_key_file_load_from_file (kf, conffile, G_KEY_FILE_KEEP_COMMENTS | G_KEY_FILE_KEEP_TRANSLATIONS, NULL))
+    {
+        err = NULL;
+        val = g_key_file_get_integer (kf, "*", "width", &err);
+        if (err == NULL) *w = val;
+        else *w = 500;
+
+        err = NULL;
+        val = g_key_file_get_integer (kf, "*", "height", &err);
+        if (err == NULL) *h = val;
+        else *h = 400;
+
+        err = NULL;
+        val = g_key_file_get_integer (kf, "*", "tab", &err);
+        if (err == NULL) *tab = val;
+        else *tab = 0;
+    }
+
+    g_key_file_free (kf);
+    g_free (conffile);
+}
+
+static void save_config (void)
+{
+    char *conffile, *str;
+    GKeyFile *kf;
+    gsize len;
+    int w, h;
+
+    conffile = g_build_filename (g_get_user_config_dir (), "rpcc", "config.ini", NULL);
+
+    str = g_path_get_dirname (conffile);
+    g_mkdir_with_parents (str, S_IRUSR | S_IWUSR | S_IXUSR);
+    g_free (str);
+
+    kf = g_key_file_new ();
+    g_key_file_load_from_file (kf, conffile, G_KEY_FILE_KEEP_COMMENTS | G_KEY_FILE_KEEP_TRANSLATIONS, NULL);
+
+    gtk_window_get_size (GTK_WINDOW (dlg), &w, &h);
+    g_key_file_set_integer (kf, "*", "width", w);
+    g_key_file_set_integer (kf, "*", "height", h);
+    g_key_file_set_integer (kf, "*", "tab", gtk_notebook_get_current_page (GTK_NOTEBOOK (nb)));
+
+    str = g_key_file_to_data (kf, &len, NULL);
+    g_file_set_contents (conffile, str, len, NULL);
+    g_free (str);
+
+    g_key_file_free (kf);
+    g_free (conffile);
+}
+
+/*----------------------------------------------------------------------------*/
 /* Startup */
 /*----------------------------------------------------------------------------*/
 
@@ -357,13 +429,16 @@ static gboolean init_window (gpointer)
     GdkWindow *win;
     DIR *d;
     struct dirent *dir;
+    int w, h, tab;
 
     /* create the dialog */
     builder = gtk_builder_new_from_file (PACKAGE_DATA_DIR "/ui/rpcc.ui");
 
     dlg = (GtkWidget *) gtk_builder_get_object (builder, "dlg");
     nb = (GtkWidget *) gtk_builder_get_object (builder, "notebook");
-    gtk_window_set_default_size (GTK_WINDOW (dlg), 500, 400);
+
+    load_config (&w, &h, &tab);
+    gtk_window_set_default_size (GTK_WINDOW (dlg), w, h);
 
     g_signal_connect (dlg, "delete_event", G_CALLBACK (close_prog), NULL);
     g_signal_connect (gtk_builder_get_object (builder, "btn_close"), "clicked", G_CALLBACK (ok_main), NULL);
@@ -381,7 +456,7 @@ static gboolean init_window (gpointer)
     }
     closedir (d);
 
-    if (!tab_set) gtk_notebook_set_current_page (GTK_NOTEBOOK (nb), 0);
+    if (!tab_set) gtk_notebook_set_current_page (GTK_NOTEBOOK (nb), tab);
 
     gtk_widget_show (dlg);
     gtk_widget_destroy (msg_dlg);
