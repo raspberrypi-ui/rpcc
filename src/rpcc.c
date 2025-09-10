@@ -149,6 +149,7 @@ static void load_plugin (GtkWidget *, const char *filename)
             if (g_strcmp0 (tablabel, name) > 0) break;
         }
         gtk_notebook_insert_page (GTK_NOTEBOOK (nb), page, box, count);
+        gtk_notebook_set_menu_label_text (GTK_NOTEBOOK (nb), page, name);
         if (st_tab)
         {
             if (!g_strcmp0 (st_tab, tab_id (tab)))

@@ -1,3 +1,9 @@
+rpcc (0.5) trixie; urgency=medium
+
+  * Set menu labels correctly
+
+ -- Simon Long <simon@raspberrypi.com>  Wed, 10 Sep 2025 13:45:21 +0100
+
 rpcc (0.4) trixie; urgency=medium
 
   * Restore size and tab
