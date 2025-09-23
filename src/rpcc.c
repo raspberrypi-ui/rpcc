@@ -428,6 +428,7 @@ static gboolean init_window (gpointer)
 {
     GtkBuilder *builder;
     GdkWindow *win;
+    GtkWidget *wid;
     DIR *d;
     struct dirent *dir;
     int w, h, tab;
@@ -442,8 +443,11 @@ static gboolean init_window (gpointer)
     gtk_window_set_default_size (GTK_WINDOW (dlg), w, h);
 
     g_signal_connect (dlg, "delete_event", G_CALLBACK (close_prog), NULL);
-    g_signal_connect (gtk_builder_get_object (builder, "btn_close"), "clicked", G_CALLBACK (ok_main), NULL);
     g_signal_connect (dlg, "scroll-event", G_CALLBACK (scroll), NULL);
+
+    wid = (GtkWidget *) gtk_builder_get_object (builder, "btn_close");
+    g_signal_connect (wid, "clicked", G_CALLBACK (ok_main), NULL);
+    gtk_widget_grab_focus (wid);
 
     g_object_unref (builder);
 

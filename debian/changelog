@@ -1,3 +1,9 @@
+rpcc (0.6) trixie; urgency=medium
+
+  * Set default focus to close button
+
+ -- Simon Long <simon@raspberrypi.com>  Tue, 23 Sep 2025 11:47:55 +0100
+
 rpcc (0.5) trixie; urgency=medium
 
   * Set menu labels correctly
