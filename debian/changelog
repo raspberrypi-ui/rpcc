@@ -1,3 +1,9 @@
+rpcc (0.7) trixie; urgency=medium
+
+  * Update Japanese translation
+
+ -- Simon Long <simon@raspberrypi.com>  Fri, 03 Oct 2025 11:24:40 +0100
+
 rpcc (0.6) trixie; urgency=medium
 
   * Set default focus to close button
