@@ -1,0 +1,63 @@
+# Brazilian Portuguese translations for rpcc package.
+# Copyright (C) 2025 Raspberry Pi Ltd.
+# This file is distributed under the same license as the rpcc package.
+# Eduardo Addad de Oliveira <eduardo@addadtech.com.br>, 2025.
+#
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: rpcc\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2025-10-03 17:29+0900\n"
+"PO-Revision-Date: 2025-10-03 17:54+0900\n"
+"Last-Translator: Eduardo Addad de Oliveira <eduardo@addadtech.com.br>\n"
+"Language-Team: \n"
+"Language: pt-br\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"X-Generator: Poedit 3.6\n"
+
+#: src/rpcc.c:268
+msgid ""
+"The changes you have made require the Raspberry Pi to be rebooted to take "
+"effect.\n"
+"\n"
+"Would you like to reboot now? "
+msgstr ""
+"As alterações que você fez exigem que o Raspberry Pi seja reiniciado para serem aplicadas.\n"
+"\n"
+"Deseja reiniciar agora? "
+
+#: src/rpcc.c:271
+msgid "_No"
+msgstr "_Não"
+
+#: src/rpcc.c:276
+msgid "_Yes"
+msgstr "_Sim"
+
+#. show wait message
+#: src/rpcc.c:521
+msgid "Loading configuration - please wait..."
+msgstr "Carregando configuração - aguarde..."
+
+#: data/rpcc.ui:8 data/rpcc.ui:153 data/rpcc.desktop.in:3
+msgid "Control Centre"
+msgstr "Centro de controle"
+
+#: data/rpcc.ui:25
+msgid "_Close"
+msgstr "_Fechar"
+
+#: data/rpcc.ui:116
+msgid "_Cancel"
+msgstr "_Cancelar"
+
+#: data/rpcc.ui:130
+msgid "_OK"
+msgstr "_OK"
+
+#: data/rpcc.desktop.in:7
+msgid "Configure Raspberry Pi Desktop"
+msgstr "Configurar o ambiente de trabalho do Raspberry Pi"
