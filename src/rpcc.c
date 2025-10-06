@@ -91,7 +91,7 @@ static gboolean draw (GtkWidget *wid, cairo_t *cr, gpointer data);
 /* Plugin management */
 /*----------------------------------------------------------------------------*/
 
-static void load_plugin (GtkWidget *, const char *filename)
+static void load_plugin (GtkWidget *widget, const char *filename)
 {
     GtkWidget *label, *page, *icon, *box;
     void *phandle;
@@ -169,7 +169,7 @@ static void load_plugin (GtkWidget *, const char *filename)
     plugin_handles = g_list_append (plugin_handles, phandle);
 }
 
-static void free_plugins (void *phandle, gpointer)
+static void free_plugins (void *phandle, gpointer data)
 {
     free_plugin = dlsym (phandle, "free_plugin");
     free_plugin ();
@@ -194,7 +194,7 @@ const char *dgetfixt (const char *domain, const char *msgctxid)
     return strchr (msgctxid, 0x04) + 1;
 }
 
-static void update_icons (GtkWidget *, gpointer)
+static void update_icons (GtkWidget *widget, gpointer data)
 {
     GtkWidget *icon;
     GdkPixbuf *pixbuf;
@@ -241,7 +241,7 @@ void clear_watch_cursor (void)
 /* Reboot prompt */
 /*----------------------------------------------------------------------------*/
 
-static void reboot_check (void *phandle, gpointer)
+static void reboot_check (void *phandle, gpointer data)
 {
     reboot_needed = dlsym (phandle, "reboot_needed");
     if (reboot_needed ()) reboot = TRUE;
@@ -287,14 +287,14 @@ static void close_with_prompt (void)
     else gtk_main_quit ();
 }
 
-static gboolean close_app (GtkButton *button, gpointer)
+static gboolean close_app (GtkButton *button, gpointer data)
 {
     gtk_widget_destroy (msg_dlg);
     gtk_main_quit ();
     return FALSE;
 }
 
-static gboolean close_app_reboot (GtkButton *button, gpointer)
+static gboolean close_app_reboot (GtkButton *button, gpointer data)
 {
     gtk_widget_destroy (msg_dlg);
     gtk_main_quit ();
@@ -338,7 +338,7 @@ static gboolean close_prog (GtkWidget *widget, GdkEvent *event, gpointer data)
     return TRUE;
 }
 
-static gboolean scroll (GtkWidget *, GdkEventScroll *ev, gpointer)
+static gboolean scroll (GtkWidget *widget, GdkEventScroll *ev, gpointer data)
 {
     int page;
 
@@ -424,7 +424,7 @@ static void save_config (void)
 /* Startup */
 /*----------------------------------------------------------------------------*/
 
-static gboolean init_window (gpointer)
+static gboolean init_window (gpointer data)
 {
     GtkBuilder *builder;
     GdkWindow *win;
