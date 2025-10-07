@@ -473,7 +473,7 @@ static gboolean init_window (gpointer)
     if (l)
     {
         GtkAllocation alloc;
-        gtk_widget_get_allocation (GTK_WIDGET (g_list_nth_data (l, 1)), &alloc);
+        gtk_widget_get_allocation (GTK_WIDGET (g_list_nth_data (l, 0)), &alloc);
         tabs_x = alloc.x;
         g_list_free (l);
     }
