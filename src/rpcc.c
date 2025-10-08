@@ -91,6 +91,28 @@ static gboolean draw (GtkWidget *wid, cairo_t *cr, gpointer data);
 /* Plugin management */
 /*----------------------------------------------------------------------------*/
 
+static gboolean verify_interface (void *phandle)
+{
+    static const char * const symbols[] = {
+        "init_plugin",
+        "plugin_tabs",
+        "tab_name",
+        "tab_id",
+        "get_tab",
+        "icon_name",
+        "reboot_needed",
+        "free_plugin",
+        NULL,
+    };
+    for (size_t i = 0; symbols[i]; i++) {
+        if (!dlsym (phandle, symbols[i])) {
+            fprintf (stderr, "Missing symbol '%s'\n", symbols[i]);
+            return FALSE;
+        }
+    }
+    return TRUE;
+}
+
 static void load_plugin (GtkWidget *, const char *filename)
 {
     GtkWidget *label, *page, *icon, *box;
@@ -106,6 +128,14 @@ static void load_plugin (GtkWidget *, const char *filename)
     path = g_build_filename (PLUGIN_PATH, filename, NULL);
     phandle = dlopen (path, RTLD_LAZY);
     g_free (path);
+    if (!phandle) {
+        return;
+    }
+    if (!verify_interface (phandle)) {
+        dlclose (phandle);
+        fprintf (stderr, "%s does not conform to the API interface\n", filename);
+        return;
+    }
 
     init_plugin = dlsym (phandle, "init_plugin");
     plugin_tabs = dlsym (phandle, "plugin_tabs");
