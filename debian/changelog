@@ -1,3 +1,9 @@
+rpcc (0.9) trixie; urgency=medium
+
+  * Add some error checking to plugin load
+
+ -- Simon Long <simon@raspberrypi.com>  Wed, 08 Oct 2025 09:20:07 +0100
+
 rpcc (0.8) trixie; urgency=medium
 
   * Add Portuguese translations
