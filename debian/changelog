@@ -1,3 +1,9 @@
+rpcc (0.10) trixie; urgency=medium
+
+  * Use full path for reboot
+
+ -- Simon Long <simon@raspberrypi.com>  Mon, 13 Oct 2025 15:13:00 +0100
+
 rpcc (0.9) trixie; urgency=medium
 
   * Add some error checking to plugin load

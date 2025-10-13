@@ -328,7 +328,7 @@ static gboolean close_app_reboot (GtkButton *button, gpointer)
 {
     gtk_widget_destroy (msg_dlg);
     gtk_main_quit ();
-    system ("reboot");
+    system ("/usr/sbin/reboot");
     return FALSE;
 }
 
