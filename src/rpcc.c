@@ -62,7 +62,7 @@ static GdkCursor *watch;
 /*----------------------------------------------------------------------------*/
 
 static int (*plugin_tabs) (void);
-static void (*init_plugin) (void);
+static void (*init_plugin) (GtkWidget *parent);
 static const char *(*tab_name) (int tab);
 static const char *(*tab_id) (int tab);
 static GtkWidget *(*get_tab) (int tab);
@@ -144,7 +144,7 @@ static void load_plugin (GtkWidget *, const char *filename)
     get_tab = dlsym (phandle, "get_tab");
     icon_name = dlsym (phandle, "icon_name");
 
-    init_plugin ();
+    init_plugin (dlg);
 
     sc = gtk_widget_get_style_context (nb);
     gtk_style_context_get (sc, gtk_style_context_get_state (sc), GTK_STYLE_PROPERTY_FONT, &font_desc, NULL);

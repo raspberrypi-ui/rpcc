@@ -17,9 +17,11 @@ directory /usr/lib/<architecture>/rpcc and can have any filename.
 
 A plugin must export the following functions, which are called by rpcc:
 
-void init_plugin (void)
+void init_plugin (GtkWidget *parent)
     - Called when the plugin is first loaded to perform any initialisation it requires,
-      including setting translation domain.
+      including setting translation domain. The 'parent' argument is set to the
+      top-level window of the Control Centre application, in case this is needed
+      by the plugin for setting window transience or similar.
 
 int plugin_tabs (void)
     - Should return the number of tab pages the plugin provides. Must be 1 or greater.
