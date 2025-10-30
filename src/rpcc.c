@@ -123,6 +123,7 @@ static void load_plugin (GtkWidget *, const char *filename)
     GdkPixbuf *pixbuf;
     PangoFontDescription *font_desc;
     GtkStyleContext *sc;
+    int scale;
 
     if (!strstr (filename, ".so")) return;
     path = g_build_filename (PLUGIN_PATH, filename, NULL);
@@ -150,6 +151,7 @@ static void load_plugin (GtkWidget *, const char *filename)
     gtk_style_context_get (sc, gtk_style_context_get_state (sc), GTK_STYLE_PROPERTY_FONT, &font_desc, NULL);
     font_height = pango_font_description_get_size (font_desc) / PANGO_SCALE;
     pango_font_description_free (font_desc);
+    scale = gtk_widget_get_scale_factor (dlg);
 
     for (tab = 0; tab < plugin_tabs (); tab++)
     {
@@ -158,10 +160,16 @@ static void load_plugin (GtkWidget *, const char *filename)
 
         icon = gtk_image_new ();
         gtk_widget_set_name (icon, icon_name (tab));
-        pixbuf = gtk_icon_theme_load_icon (gtk_icon_theme_get_default (), gtk_widget_get_name (icon), font_height < 12 ? 24 : 32, GTK_ICON_LOOKUP_FORCE_SIZE, NULL);
+        pixbuf = gtk_icon_theme_load_icon_for_scale (gtk_icon_theme_get_default (), gtk_widget_get_name (icon), font_height < 12 ? 24 : 32, scale, GTK_ICON_LOOKUP_FORCE_SIZE, NULL);
         if (pixbuf)
         {
-            gtk_image_set_from_pixbuf (GTK_IMAGE (icon), pixbuf);
+            if (scale == 1) gtk_image_set_from_pixbuf (GTK_IMAGE (icon), pixbuf);
+            else
+            {
+                cairo_surface_t *cr = gdk_cairo_surface_create_from_pixbuf (pixbuf, scale, NULL);
+                gtk_image_set_from_surface (GTK_IMAGE (icon), cr);
+                cairo_surface_destroy (cr);
+            }
             g_object_unref (pixbuf);
         }
 
@@ -232,11 +240,13 @@ static void update_icons (GtkWidget *, gpointer)
     PangoFontDescription *font_desc;
     GtkStyleContext *sc;
     GList *list;
+    int scale;
 
     sc = gtk_widget_get_style_context (nb);
     gtk_style_context_get (sc, gtk_style_context_get_state (sc), GTK_STYLE_PROPERTY_FONT, &font_desc, NULL);
     font_height = pango_font_description_get_size (font_desc) / PANGO_SCALE;
     pango_font_description_free (font_desc);
+    scale = gtk_widget_get_scale_factor (dlg);
 
     for (count = 0; count < gtk_notebook_get_n_pages (GTK_NOTEBOOK (nb)); count++)
     {
@@ -244,10 +254,16 @@ static void update_icons (GtkWidget *, gpointer)
         icon = GTK_WIDGET (g_list_first (list)->data);
         g_list_free (list);
 
-        pixbuf = gtk_icon_theme_load_icon (gtk_icon_theme_get_default (), gtk_widget_get_name (icon), font_height < 12 ? 24 : 32, GTK_ICON_LOOKUP_FORCE_SIZE, NULL);
+        pixbuf = gtk_icon_theme_load_icon_for_scale (gtk_icon_theme_get_default (), gtk_widget_get_name (icon), font_height < 12 ? 24 : 32, scale, GTK_ICON_LOOKUP_FORCE_SIZE, NULL);
         if (pixbuf)
         {
-            gtk_image_set_from_pixbuf (GTK_IMAGE (icon), pixbuf);
+            if (scale == 1) gtk_image_set_from_pixbuf (GTK_IMAGE (icon), pixbuf);
+            else
+            {
+                cairo_surface_t *cr = gdk_cairo_surface_create_from_pixbuf (pixbuf, scale, NULL);
+                gtk_image_set_from_surface (GTK_IMAGE (icon), cr);
+                cairo_surface_destroy (cr);
+            }
             g_object_unref (pixbuf);
         }
     }
