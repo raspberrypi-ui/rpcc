@@ -51,9 +51,7 @@ static GList *plugin_handles = NULL;
 static GtkWidget *dlg, *msg_dlg, *nb;
 static gulong draw_id;
 static gboolean reboot = FALSE;
-static gboolean tab_set = FALSE;
-static gboolean wifi_ctry = FALSE;
-static char *st_tab;
+static char *st_tab[3];
 static int tabs_x;
 static GdkCursor *watch;
 
@@ -85,6 +83,7 @@ static gboolean scroll (GtkWidget *, GdkEventScroll *ev, gpointer);
 static void load_config (int *w, int *h, int *tab);
 static void save_config (void);
 static gboolean init_window (gpointer);
+static gboolean exec_plugin_func (gpointer);
 static gboolean draw (GtkWidget *wid, cairo_t *cr, gpointer data);
 
 /*----------------------------------------------------------------------------*/
@@ -188,18 +187,11 @@ static void load_plugin (GtkWidget *, const char *filename)
         }
         gtk_notebook_insert_page (GTK_NOTEBOOK (nb), page, box, count);
         gtk_notebook_set_menu_label_text (GTK_NOTEBOOK (nb), page, name);
-        if (st_tab)
+        if (st_tab[0])
         {
-            if (!g_strcmp0 (st_tab, tab_id (tab)))
+            if (!g_strcmp0 (st_tab[0], tab_id (tab)))
             {
                 gtk_notebook_set_current_page (GTK_NOTEBOOK (nb), count);
-                tab_set = TRUE;
-            }
-            else if (!g_strcmp0 (st_tab, "wifi_country") && !g_strcmp0 (tab_id (tab), "localisation"))
-            {
-                gtk_notebook_set_current_page (GTK_NOTEBOOK (nb), count);
-                tab_set = TRUE;
-                wifi_ctry = TRUE;
             }
         }
     }
@@ -216,8 +208,8 @@ static void free_plugins (void *phandle, gpointer)
 
 static void call_func (void *phandle, gpointer data)
 {
-    void (*func) (void) = dlsym (phandle, (char *) data);
-    if (func) func ();
+    void (*func) (char *) = dlsym (phandle, (char *) data);
+    if (func) func (st_tab[2]);
 }
 
 void call_plugin_func (char *name)
@@ -507,7 +499,7 @@ static gboolean init_window (gpointer)
     }
     closedir (d);
 
-    if (!tab_set) gtk_notebook_set_current_page (GTK_NOTEBOOK (nb), tab);
+    if (!st_tab[0]) gtk_notebook_set_current_page (GTK_NOTEBOOK (nb), tab);
 
     gtk_widget_show (dlg);
     gtk_widget_destroy (msg_dlg);
@@ -525,9 +517,15 @@ static gboolean init_window (gpointer)
     }
     else tabs_x = 0;
 
-    if (wifi_ctry) call_plugin_func ("on_set_wifi");
+    g_idle_add (exec_plugin_func, NULL);
     g_signal_connect (nb, "style-updated", G_CALLBACK (update_icons), NULL);
 
+    return FALSE;
+}
+
+static gboolean exec_plugin_func (gpointer)
+{
+    if (st_tab[1]) call_plugin_func (st_tab[1]);
     return FALSE;
 }
 
@@ -544,6 +542,8 @@ static gboolean draw (GtkWidget *wid, cairo_t *cr, gpointer data)
 
 int main (int argc, char* argv[])
 {
+    int i;
+
     setlocale (LC_ALL, "");
     bindtextdomain (GETTEXT_PACKAGE, PACKAGE_LOCALE_DIR);
     bind_textdomain_codeset (GETTEXT_PACKAGE, "UTF-8");
@@ -556,8 +556,11 @@ int main (int argc, char* argv[])
     }
     else wm = WM_OPENBOX;
 
-    if (argc > 1) st_tab = g_strdup (argv[1]);
-    else st_tab = NULL;
+    for (i = 0; i < 3; i++)
+    {
+        if (argc > i + 1) st_tab[i] = g_strdup (argv[i + 1]);
+        else st_tab[i] = NULL;
+    }
 
     gtk_init (&argc, &argv);
 
