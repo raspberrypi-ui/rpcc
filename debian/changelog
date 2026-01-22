@@ -1,3 +1,9 @@
+rpcc (0.13) trixie; urgency=medium
+
+  * Make mechanism for passing command-line arguments to plugins generic
+
+ -- Simon Long <simon@raspberrypi.com>  Thu, 22 Jan 2026 11:57:22 +0000
+
 rpcc (0.12) trixie; urgency=medium
 
   * Add support for scaling for HiDPI
