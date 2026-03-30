@@ -31,7 +31,10 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <sys/stat.h>
 #include <gtk/gtk.h>
 #include <glib/gi18n.h>
+#include <gdk/gdkwayland.h>
 #include "rpcc.h"
+
+#include "xdg-activation-v1-client-protocol.h"
 
 /*----------------------------------------------------------------------------*/
 /* Typedefs and macros */
@@ -73,6 +76,9 @@ static const gchar introspection_xml[] =
   "    </method>"
   "  </interface>"
   "</node>";
+
+struct xdg_activation_v1 *manager;
+
 
 /*----------------------------------------------------------------------------*/
 /* Function prototypes */
@@ -606,6 +612,19 @@ static void name_lost (GDBusConnection *connection, const gchar *name, gpointer)
     exit (0);
 }
 
+static void token_handle_done (void *data, struct xdg_activation_token_v1 *token, const char *token_string)
+{
+    printf ("got token %s\n", token_string);
+    GdkWindow *win = gtk_widget_get_window (dlg);
+    struct wl_surface *surface = gdk_wayland_window_get_wl_surface (win);
+    xdg_activation_v1_activate (manager, token_string, surface);
+}
+
+static const struct xdg_activation_token_v1_listener token_listener =
+{
+    .done = token_handle_done,
+};
+
 static void handle_method_call (GDBusConnection *, const gchar*, const gchar*, const gchar*,
     const gchar *method_name, GVariant *parameters, GDBusMethodInvocation *invocation, gpointer)
 {
@@ -644,9 +663,76 @@ static void handle_method_call (GDBusConnection *, const gchar*, const gchar*, c
             st_tab[2] = g_strdup (arg);
             exec_plugin_func (NULL);
         }
+        
+    GdkDisplay *gdk_display = gdk_display_get_default ();
+    GdkSeat *seat = gdk_display_get_default_seat (gdk_display);
+    struct wl_seat *wseat  = gdk_wayland_seat_get_wl_seat (seat);
+    GdkWindow *win = gtk_widget_get_window (dlg);
+    struct wl_surface *surface = gdk_wayland_window_get_wl_surface (win);
+
+
+        struct xdg_activation_token_v1 *token = xdg_activation_v1_get_activation_token (manager);
+        xdg_activation_token_v1_add_listener (token, &token_listener, NULL);
+        xdg_activation_token_v1_set_app_id (token, "rpcc");
+        xdg_activation_token_v1_set_serial (token, 0, wseat);
+        xdg_activation_token_v1_set_surface (token, surface);
+        xdg_activation_token_v1_commit (token);
+            
     }
     else g_dbus_method_invocation_return_dbus_error (invocation, DBUS_INTERFACE_NAME ".Failed", "Unsupported method call");
 }
+
+/*----------------------------------------------------------------------------*/
+/* Wayland activation protocol */
+/*----------------------------------------------------------------------------*/
+
+#define HANDLE_PTR struct xdg_activation_handle_v1 *
+#define MANAGER_PTR struct xdg_activation_manager_v1 *
+
+
+#if 0
+static void handle_manager_toplevel (void *data, MANAGER_PTR, HANDLE_PTR toplevel)
+{
+    //WinlistPlugin *wl = (WinlistPlugin*) data;
+    //WindowItem *item = g_new0 (WindowItem, 1);
+
+    //item->plugin = NULL;
+    //item->handle = (void *) toplevel;
+    //wl->windows = g_list_prepend (wl->windows, item);
+    //zwlr_foreign_toplevel_handle_v1_add_listener (toplevel, &toplevel_handle_v1, data);
+}
+
+static void handle_manager_finished (void *data, MANAGER_PTR)
+{
+    //WinlistPlugin *wl = (WinlistPlugin*) data;
+    manager = NULL;
+}
+struct xdg_activation_manager_v1_listener activation_manager_v1 = 
+{
+//    .toplevel = handle_manager_toplevel,
+//    .finished = handle_manager_finished,
+};
+#endif
+
+static void registry_add_object (void *data, struct wl_registry *registry, uint32_t name, const char *interface, uint32_t version)
+{
+    if (!g_strcmp0 (interface, xdg_activation_v1_interface.name))
+    {
+        manager = wl_registry_bind (registry, name, &xdg_activation_v1_interface, 1);
+        printf ("manager %lx\n", manager);
+    }
+}
+
+static void registry_remove_object (void *, struct wl_registry *, uint32_t)
+{
+    xdg_activation_v1_destroy (manager);
+}
+
+static struct wl_registry_listener registry_listener =
+{
+    &registry_add_object,
+    &registry_remove_object
+};
 
 /*----------------------------------------------------------------------------*/
 /* Main function */
@@ -675,7 +761,19 @@ int main (int argc, char* argv[])
     }
     else wm = WM_OPENBOX;
 
+
+
+
     gtk_init (&argc, &argv);
+
+    GdkDisplay *gdk_display = gdk_display_get_default ();
+    struct wl_display *display = gdk_wayland_display_get_wl_display (gdk_display);
+    struct wl_registry *registry = wl_display_get_registry (display);
+
+    wl_registry_add_listener (registry, &registry_listener, NULL);
+    wl_display_roundtrip (display);
+    wl_registry_destroy (registry);
+
 
     watch = gdk_cursor_new_for_display (gdk_display_get_default (), GDK_WATCH);
 
