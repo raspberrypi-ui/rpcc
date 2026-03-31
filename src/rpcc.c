@@ -77,6 +77,7 @@ static const gchar introspection_xml[] =
   "</node>";
 
 struct xdg_activation_v1 *activation;
+struct wl_seat *wseat;
 
 /*----------------------------------------------------------------------------*/
 /* Function prototypes */
@@ -494,31 +495,37 @@ static void save_config (void)
 /*----------------------------------------------------------------------------*/
 
 uint32_t last_serial = 0;
+struct wl_surface *surface;
 
-static void pointer_enter(void *data, struct wl_pointer *pointer,
-                          uint32_t serial, struct wl_surface *surface,
-                          wl_fixed_t sx, wl_fixed_t sy) {
-    last_serial = serial; // Capture serial here
-    printf("Pointer entered, serial: %u\n", serial);
+static void pointer_enter (void *, struct wl_pointer *, uint32_t serial, struct wl_surface *surf, wl_fixed_t sx, wl_fixed_t sy)
+{
+    last_serial = serial;
+    surface = surf;
 }
 
-static void pointer_button(void *data, struct wl_pointer *pointer,
-                           uint32_t serial, uint32_t time,
-                           uint32_t button, uint32_t state) {
-    last_serial = serial; // Capture serial here
-    printf("Button pressed, serial: %u\n", serial);
+static void pointer_button (void *, struct wl_pointer *, uint32_t serial, uint32_t, uint32_t, uint32_t) 
+{
+    last_serial = serial;
 }
 
-// Set up the listener struct
-static const struct wl_pointer_listener pointer_listener = {
+static void pointer_leave (void *, struct wl_pointer *, uint32_t serial, struct wl_surface *surf)
+{
+    last_serial = serial;
+    surface = surf;
+}
+static void pointer_motion (void *, struct wl_pointer *, uint32_t serial, wl_fixed_t, wl_fixed_t) {}
+static void pointer_axis (void *, struct wl_pointer *, uint32_t serial, uint32_t, wl_fixed_t) {}
+static void pointer_frame (void* data, struct wl_pointer*) {}
+
+static const struct wl_pointer_listener pointer_listener =
+{
     .enter = pointer_enter,
-    //.leave = pointer_leave,
-    //.motion = pointer_motion,
+    .leave = pointer_leave,
+    .motion = pointer_motion,
     .button = pointer_button,
-    //.axis = pointer_axis,
+    .axis = pointer_axis,
+    .frame = pointer_frame,
 };
-
-
 
 static gboolean init_window (gpointer)
 {
@@ -578,18 +585,8 @@ static gboolean init_window (gpointer)
     g_idle_add (exec_plugin_func, NULL);
     g_signal_connect (nb, "style-updated", G_CALLBACK (update_icons), NULL);
 
-    GdkDisplay *gdk_display = gdk_display_get_default ();
-    GdkSeat *seat = gdk_display_get_default_seat (gdk_display);
-    struct wl_seat *wseat  = gdk_wayland_seat_get_wl_seat (seat);
-    GdkWindow *wg = gtk_widget_get_window (dlg);
-    GdkDevice *ptr = gdk_seat_get_pointer (seat);
-    struct wl_surface *surface = gdk_wayland_window_get_wl_surface (wg);
-    struct wl_pointer *wptr = gdk_wayland_device_get_wl_pointer (ptr);
-
-    wl_pointer_add_listener(wptr, &pointer_listener, NULL);
-
-
-
+    struct wl_pointer *wptr = wl_seat_get_pointer (wseat);
+    wl_pointer_add_listener (wptr, &pointer_listener, NULL);
 
     return FALSE;
 }
@@ -701,10 +698,6 @@ static void handle_method_call (GDBusConnection *, const gchar*, const gchar*, c
 
 static void token_handle_done (void *data, struct xdg_activation_token_v1 *token, const char *token_string)
 {
-    printf ("got token %s\n", token_string);
-    GdkWindow *win = gtk_widget_get_window (dlg);
-    struct wl_surface *surface = gdk_wayland_window_get_wl_surface (win);
-    printf ("surface %lx\n", surface);
     xdg_activation_v1_activate (activation, token_string, surface);
 }
 
@@ -715,22 +708,10 @@ static const struct xdg_activation_token_v1_listener token_listener =
 
 static void activate_app (void)
 {
-    GdkDisplay *gdk_display = gdk_display_get_default ();
-    GdkSeat *seat = gdk_display_get_default_seat (gdk_display);
-    struct wl_seat *wseat  = gdk_wayland_seat_get_wl_seat (seat);
-    GdkWindow *win = gtk_widget_get_window (dlg);
-    GdkDevice *ptr = gdk_seat_get_pointer (seat);
-    struct wl_surface *surface = gdk_wayland_window_get_wl_surface (win);
-    struct wl_pointer *wptr = gdk_wayland_device_get_wl_pointer (ptr);
-
-    wl_pointer_add_listener(wptr, &pointer_listener, NULL);
-
-    
     struct xdg_activation_token_v1 *token = xdg_activation_v1_get_activation_token (activation);
     xdg_activation_token_v1_add_listener (token, &token_listener, NULL);
     xdg_activation_token_v1_set_app_id (token, "rpcc");
-    xdg_activation_token_v1_set_serial (token, 1, wseat);
-    xdg_activation_token_v1_set_surface (token, surface);
+    xdg_activation_token_v1_set_serial (token, last_serial, wseat);
     xdg_activation_token_v1_commit (token);
 }
 
@@ -783,8 +764,10 @@ int main (int argc, char* argv[])
     gtk_init (&argc, &argv);
 
     GdkDisplay *gdk_display = gdk_display_get_default ();
+    GdkSeat *seat = gdk_display_get_default_seat (gdk_display);
     struct wl_display *display = gdk_wayland_display_get_wl_display (gdk_display);
     struct wl_registry *registry = wl_display_get_registry (display);
+    wseat  = gdk_wayland_seat_get_wl_seat (seat);
 
     wl_registry_add_listener (registry, &registry_listener, NULL);
     wl_display_roundtrip (display);
@@ -795,7 +778,6 @@ int main (int argc, char* argv[])
     /* show wait message */
     message (_("Loading configuration - please wait..."));
     draw_id = g_signal_connect (msg_dlg, "draw", G_CALLBACK (draw), NULL);
-
 
     gtk_main ();
 
