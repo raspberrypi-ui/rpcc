@@ -732,6 +732,12 @@ static void pointer_axis (void *, struct wl_pointer *, uint32_t serial, uint32_t
 
 static void pointer_frame (void *, struct wl_pointer *) {}
 
+static void pointer_axis_discrete (void *, struct wl_pointer *, uint32_t, int32_t) {}
+
+static void pointer_axis_source (void *, struct wl_pointer *, uint32_t) {}
+
+static void pointer_axis_stop (void *, struct wl_pointer *, uint32_t, uint32_t) {}
+
 static const struct wl_pointer_listener pointer_listener =
 {
     .enter = pointer_enter,
@@ -740,6 +746,9 @@ static const struct wl_pointer_listener pointer_listener =
     .button = pointer_button,
     .axis = pointer_axis,
     .frame = pointer_frame,
+    .axis_discrete = pointer_axis_discrete,
+    .axis_source = pointer_axis_source,
+    .axis_stop = pointer_axis_stop,
 };
 
 static void keyboard_keymap (void *, struct wl_keyboard *, uint32_t, int, uint32_t) {}
