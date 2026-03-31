@@ -78,6 +78,7 @@ static const gchar introspection_xml[] =
 
 struct xdg_activation_v1 *activation;
 struct wl_seat *wseat;
+uint32_t last_serial;
 
 /*----------------------------------------------------------------------------*/
 /* Function prototypes */
@@ -116,6 +117,7 @@ static void name_lost (GDBusConnection *connection, const gchar *name, gpointer)
 static void handle_method_call (GDBusConnection *, const gchar*, const gchar*, const gchar*,
     const gchar *method_name, GVariant *parameters, GDBusMethodInvocation *invocation, gpointer);
 static void activate_app (void);
+static void add_event_listeners (void);
 
 /*----------------------------------------------------------------------------*/
 /* Plugin management */
@@ -494,46 +496,6 @@ static void save_config (void)
 /* Startup */
 /*----------------------------------------------------------------------------*/
 
-uint32_t last_serial = 0;
-struct wl_surface *surface;
-
-static void pointer_enter (void *, struct wl_pointer *, uint32_t serial, struct wl_surface *surf, wl_fixed_t sx, wl_fixed_t sy)
-{
-    last_serial = serial;
-}
-
-static void pointer_button (void *, struct wl_pointer *, uint32_t serial, uint32_t, uint32_t, uint32_t) 
-{
-    last_serial = serial;
-}
-
-static void pointer_leave (void *, struct wl_pointer *, uint32_t serial, struct wl_surface *surf)
-{
-    last_serial = serial;
-}
-
-static void pointer_motion (void *, struct wl_pointer *, uint32_t serial, wl_fixed_t, wl_fixed_t)
-{
-    last_serial = serial;
-}
-
-static void pointer_axis (void *, struct wl_pointer *, uint32_t serial, uint32_t, wl_fixed_t)
-{
-    last_serial = serial;
-}
-
-static void pointer_frame (void* data, struct wl_pointer*) {}
-
-static const struct wl_pointer_listener pointer_listener =
-{
-    .enter = pointer_enter,
-    .leave = pointer_leave,
-    .motion = pointer_motion,
-    .button = pointer_button,
-    .axis = pointer_axis,
-    .frame = pointer_frame,
-};
-
 static gboolean init_window (gpointer)
 {
     GtkBuilder *builder;
@@ -592,8 +554,7 @@ static gboolean init_window (gpointer)
     g_idle_add (exec_plugin_func, NULL);
     g_signal_connect (nb, "style-updated", G_CALLBACK (update_icons), NULL);
 
-    wl_pointer_add_listener (wl_seat_get_pointer (wseat), &pointer_listener, NULL);
-    surface = gdk_wayland_window_get_wl_surface (win);
+    add_event_listeners ();
 
     return FALSE;
 }
@@ -705,6 +666,8 @@ static void handle_method_call (GDBusConnection *, const gchar*, const gchar*, c
 
 static void token_handle_done (void *data, struct xdg_activation_token_v1 *token, const char *token_string)
 {
+    GdkWindow *win = gtk_widget_get_window (dlg);
+    struct wl_surface *surface = gdk_wayland_window_get_wl_surface (win);
     xdg_activation_v1_activate (activation, token_string, surface);
 }
 
@@ -740,6 +703,83 @@ static struct wl_registry_listener registry_listener =
     &registry_add_object,
     &registry_remove_object
 };
+
+static void pointer_enter (void *, struct wl_pointer *, uint32_t serial, struct wl_surface *surf, wl_fixed_t sx, wl_fixed_t sy)
+{
+    last_serial = serial;
+}
+
+static void pointer_button (void *, struct wl_pointer *, uint32_t serial, uint32_t, uint32_t, uint32_t)
+{
+    last_serial = serial;
+}
+
+static void pointer_leave (void *, struct wl_pointer *, uint32_t serial, struct wl_surface *surf)
+{
+    last_serial = serial;
+}
+
+static void pointer_motion (void *, struct wl_pointer *, uint32_t serial, wl_fixed_t, wl_fixed_t)
+{
+    last_serial = serial;
+}
+
+static void pointer_axis (void *, struct wl_pointer *, uint32_t serial, uint32_t, wl_fixed_t)
+{
+    last_serial = serial;
+}
+
+static void pointer_frame (void *, struct wl_pointer *) {}
+
+static const struct wl_pointer_listener pointer_listener =
+{
+    .enter = pointer_enter,
+    .leave = pointer_leave,
+    .motion = pointer_motion,
+    .button = pointer_button,
+    .axis = pointer_axis,
+    .frame = pointer_frame,
+};
+
+static void keyboard_keymap (void *, struct wl_keyboard *, uint32_t, int, uint32_t) {}
+
+static void keyboard_enter (void *, struct wl_keyboard *, uint32_t serial, struct wl_surface *, struct wl_array *)
+{
+    last_serial = serial;
+}
+
+static void keyboard_leave (void *, struct wl_keyboard *, uint32_t serial, struct wl_surface *)
+{
+    last_serial = serial;
+}
+
+static void keyboard_key (void *, struct wl_keyboard *, uint32_t serial, uint32_t, uint32_t, uint32_t)
+{
+    last_serial = serial;
+}
+
+static void keyboard_modifiers (void *, struct wl_keyboard *, uint32_t serial, uint32_t, uint32_t, uint32_t, uint32_t)
+{
+    last_serial = serial;
+}
+
+static void keyboard_repeat_info (void *, struct wl_keyboard *, int32_t, int32_t) {}
+
+static const struct wl_keyboard_listener keyboard_listener =
+{
+    .keymap = keyboard_keymap,
+    .enter = keyboard_enter,
+    .leave = keyboard_leave,
+    .key = keyboard_key,
+    .modifiers = keyboard_modifiers,
+    .repeat_info = keyboard_repeat_info,
+};
+
+static void add_event_listeners (void)
+{
+    wl_pointer_add_listener (wl_seat_get_pointer (wseat), &pointer_listener, NULL);
+    wl_keyboard_add_listener (wl_seat_get_keyboard (wseat), &keyboard_listener, NULL);
+}
 
 /*----------------------------------------------------------------------------*/
 /* Main function */
