@@ -607,11 +607,10 @@ static void name_lost (GDBusConnection *connection, const gchar *name, gpointer)
 
     /* name already on DBus, so application already running - call the newtab function on the existing instance and then exit */
     proxy = g_dbus_proxy_new_sync (connection, G_DBUS_PROXY_FLAGS_NONE, NULL, DBUS_BUS_NAME, DBUS_OBJECT_PATH, DBUS_INTERFACE_NAME, NULL, NULL);
-    var = g_variant_new ("(sss)", st_tab[0], st_tab[1] ? st_tab[1] : "", st_tab[2] ? st_tab[2] : "");
+    var = g_variant_new ("(sss)", st_tab[0] ? st_tab[0] : "", st_tab[1] ? st_tab[1] : "", st_tab[2] ? st_tab[2] : "");
     g_dbus_proxy_call_sync (proxy, "newtab", var, G_DBUS_CALL_FLAGS_NONE, -1, NULL, NULL);
-    g_dbus_connection_close_sync (connection, NULL, NULL);
 
-    g_free (var);
+    g_dbus_connection_close_sync (connection, NULL, NULL);
     g_object_unref (proxy);
     exit (0);
 }
@@ -670,6 +669,7 @@ static void token_handle_done (void *data, struct xdg_activation_token_v1 *token
     GdkWindow *win = gtk_widget_get_window (dlg);
     struct wl_surface *surface = gdk_wayland_window_get_wl_surface (win);
     xdg_activation_v1_activate (activation, token_string, surface);
+    xdg_activation_token_v1_destroy (token);
 }
 
 static const struct xdg_activation_token_v1_listener token_listener =
