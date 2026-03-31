@@ -656,6 +656,7 @@ static void handle_method_call (GDBusConnection *, const gchar*, const gchar*, c
         }
 
         if (wm != WM_OPENBOX) activate_app ();
+        else gtk_window_present (GTK_WINDOW (dlg));
     }
     else g_dbus_method_invocation_return_dbus_error (invocation, DBUS_INTERFACE_NAME ".Failed", "Unsupported method call");
 }
@@ -812,15 +813,18 @@ int main (int argc, char* argv[])
 
     GdkDisplay *gdk_display = gdk_display_get_default ();
     GdkSeat *seat = gdk_display_get_default_seat (gdk_display);
-    struct wl_display *display = gdk_wayland_display_get_wl_display (gdk_display);
-    struct wl_registry *registry = wl_display_get_registry (display);
-    wseat  = gdk_wayland_seat_get_wl_seat (seat);
+    if (wm != WM_OPENBOX)
+    {
+        struct wl_display *display = gdk_wayland_display_get_wl_display (gdk_display);
+        struct wl_registry *registry = wl_display_get_registry (display);
+        wseat  = gdk_wayland_seat_get_wl_seat (seat);
 
-    wl_registry_add_listener (registry, &registry_listener, NULL);
-    wl_display_roundtrip (display);
-    wl_registry_destroy (registry);
+        wl_registry_add_listener (registry, &registry_listener, NULL);
+        wl_display_roundtrip (display);
+        wl_registry_destroy (registry);
+    }
 
-    watch = gdk_cursor_new_for_display (gdk_display_get_default (), GDK_WATCH);
+    watch = gdk_cursor_new_for_display (gdk_display, GDK_WATCH);
 
     /* show wait message */
     message (_("Loading configuration - please wait..."));
