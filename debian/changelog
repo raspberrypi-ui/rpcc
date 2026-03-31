@@ -1,3 +1,9 @@
+rpcc (0.14) trixie; urgency=medium
+
+  * Only allow one instance
+
+ -- Simon Long <simon@raspberrypi.com>  Tue, 31 Mar 2026 14:55:20 +0100
+
 rpcc (0.13) trixie; urgency=medium
 
   * Make mechanism for passing command-line arguments to plugins generic
