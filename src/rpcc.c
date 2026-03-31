@@ -500,7 +500,6 @@ struct wl_surface *surface;
 static void pointer_enter (void *, struct wl_pointer *, uint32_t serial, struct wl_surface *surf, wl_fixed_t sx, wl_fixed_t sy)
 {
     last_serial = serial;
-    surface = surf;
 }
 
 static void pointer_button (void *, struct wl_pointer *, uint32_t serial, uint32_t, uint32_t, uint32_t) 
@@ -511,10 +510,18 @@ static void pointer_button (void *, struct wl_pointer *, uint32_t serial, uint32
 static void pointer_leave (void *, struct wl_pointer *, uint32_t serial, struct wl_surface *surf)
 {
     last_serial = serial;
-    surface = surf;
 }
-static void pointer_motion (void *, struct wl_pointer *, uint32_t serial, wl_fixed_t, wl_fixed_t) {}
-static void pointer_axis (void *, struct wl_pointer *, uint32_t serial, uint32_t, wl_fixed_t) {}
+
+static void pointer_motion (void *, struct wl_pointer *, uint32_t serial, wl_fixed_t, wl_fixed_t)
+{
+    last_serial = serial;
+}
+
+static void pointer_axis (void *, struct wl_pointer *, uint32_t serial, uint32_t, wl_fixed_t)
+{
+    last_serial = serial;
+}
+
 static void pointer_frame (void* data, struct wl_pointer*) {}
 
 static const struct wl_pointer_listener pointer_listener =
@@ -585,8 +592,8 @@ static gboolean init_window (gpointer)
     g_idle_add (exec_plugin_func, NULL);
     g_signal_connect (nb, "style-updated", G_CALLBACK (update_icons), NULL);
 
-    struct wl_pointer *wptr = wl_seat_get_pointer (wseat);
-    wl_pointer_add_listener (wptr, &pointer_listener, NULL);
+    wl_pointer_add_listener (wl_seat_get_pointer (wseat), &pointer_listener, NULL);
+    surface = gdk_wayland_window_get_wl_surface (win);
 
     return FALSE;
 }
