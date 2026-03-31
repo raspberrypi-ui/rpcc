@@ -554,7 +554,7 @@ static gboolean init_window (gpointer)
     g_idle_add (exec_plugin_func, NULL);
     g_signal_connect (nb, "style-updated", G_CALLBACK (update_icons), NULL);
 
-    add_event_listeners ();
+    if (wm != WM_OPENBOX) add_event_listeners ();
 
     return FALSE;
 }
