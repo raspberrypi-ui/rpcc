@@ -82,7 +82,7 @@ static void name_acquired (GDBusConnection *connection, const gchar *name, gpoin
 {
     /* name not on DBus, so this is the first instance - set up handler for activate function */
     char *object_path = g_strdup_printf ("/com/raspberrypi/%s", app_id);
-    char *introspection_xml = g_strdup_printf ("<node><interface name='com.raspberrypi.%s'><method name='newtab'><arg type='s' name='tab' direction='in'/><arg type='s' name='fn' direction='in'/><arg type='s' name='arg' direction='in'/></method></interface></node>", app_id);
+    char *introspection_xml = g_strdup_printf ("<node><interface name='com.raspberrypi.%s'><method name='activate'><arg type='s' name='tab' direction='in'/><arg type='s' name='fn' direction='in'/><arg type='s' name='arg' direction='in'/></method></interface></node>", app_id);
     GDBusNodeInfo *introspection_data = g_dbus_node_info_new_for_xml (introspection_xml, NULL);
 
     g_dbus_connection_register_object (connection, object_path, introspection_data->interfaces[0], &interface_vtable, NULL, NULL, NULL);
@@ -101,7 +101,8 @@ static void name_lost (GDBusConnection *connection, const gchar *name, gpointer)
 
     GDBusProxy *proxy = g_dbus_proxy_new_sync (connection, G_DBUS_PROXY_FLAGS_NONE, NULL, bus_name, object_path, interface_name, NULL, NULL);
     GVariant *var = dbus_get_args ();
-    g_dbus_proxy_call_sync (proxy, "newtab", var, G_DBUS_CALL_FLAGS_NONE, -1, NULL, NULL);
+    g_dbus_proxy_call_sync (proxy, "activate", var, G_DBUS_CALL_FLAGS_NONE, -1, NULL, NULL);
+    g_dbus_connection_close_sync (connection, NULL, NULL);
 
     g_object_unref (proxy);
     g_free (bus_name);
@@ -113,7 +114,7 @@ static void name_lost (GDBusConnection *connection, const gchar *name, gpointer)
 static void handle_method_call (GDBusConnection *, const gchar*, const gchar*, const gchar*,
     const gchar *method_name, GVariant *parameters, GDBusMethodInvocation *invocation, gpointer)
 {
-    if (g_strcmp0 (method_name, "newtab") == 0)
+    if (g_strcmp0 (method_name, "activate") == 0)
     {
         g_dbus_method_invocation_return_value (invocation, NULL);
 
