@@ -53,9 +53,8 @@ static void handle_method_call (GDBusConnection *, const gchar*, const gchar*, c
 static void activate_app (void);
 static void token_done (void *data, struct xdg_activation_token_v1 *token, const char *token_string);
 
-extern void dbus_set_tab (const char* name);
 extern GVariant *dbus_get_args (void);
-extern void dbus_call_func (const char *fn, const char *arg);
+extern void dbus_handle_args (GVariant *args);
 
 /*----------------------------------------------------------------------------*/
 /* DBus interface                                                             */
@@ -114,20 +113,12 @@ static void name_lost (GDBusConnection *connection, const gchar *name, gpointer)
 static void handle_method_call (GDBusConnection *, const gchar*, const gchar*, const gchar*,
     const gchar *method_name, GVariant *parameters, GDBusMethodInvocation *invocation, gpointer)
 {
-    char *tab, *fn, *arg;
-
     if (g_strcmp0 (method_name, "newtab") == 0)
     {
         g_dbus_method_invocation_return_value (invocation, NULL);
 
-        g_variant_get (parameters, "(&s&s&s)", &tab, &fn, &arg);
+        dbus_handle_args (parameters);
 
-        // change to requested tab
-        if (strlen (tab)) dbus_set_tab (tab);
-
-        // call plugin function
-        if (strlen (fn)) dbus_call_func (fn, arg);
-        
         if (getenv ("WAYLAND_DISPLAY")) activate_app ();
         else gtk_window_present (GTK_WINDOW (wd_to_act));
     }

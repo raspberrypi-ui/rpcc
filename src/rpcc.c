@@ -544,36 +544,41 @@ static gboolean draw (GtkWidget *wid, cairo_t *cr, gpointer data)
 /* DBus interface                                                             */
 /*----------------------------------------------------------------------------*/
 
-void dbus_set_tab (const char *name)
+GVariant *dbus_get_args (void)
+{
+    return g_variant_new ("(sss)", st_tab[0] ? st_tab[0] : "", st_tab[1] ? st_tab[1] : "", st_tab[2] ? st_tab[2] : "");
+}
+
+void dbus_handle_args (GVariant *args)
 {
     GtkWidget *page;
     int pnum = 0;
+    char *tab, *fn, *arg;
 
+    g_variant_get (args, "(&s&s&s)", &tab, &fn, &arg);
+
+    // change to requested tab
     while (1)
     {
         page = gtk_notebook_get_nth_page (GTK_NOTEBOOK (nb), pnum);
         if (!page) break;
-        if (!g_strcmp0 (gtk_widget_get_name (page), name))
+        if (!g_strcmp0 (gtk_widget_get_name (page), tab))
         {
             gtk_notebook_set_current_page (GTK_NOTEBOOK (nb), pnum);
             break;
         }
         pnum++;
     }
-}
 
-GVariant *dbus_get_args (void)
-{
-    return g_variant_new ("(sss)", st_tab[0] ? st_tab[0] : "", st_tab[1] ? st_tab[1] : "", st_tab[2] ? st_tab[2] : "");
-}
-
-void dbus_call_func (const char *fn, const char *arg)
-{
-    if (st_tab[1]) g_free (st_tab[1]);
-    if (st_tab[2]) g_free (st_tab[2]);
-    st_tab[1] = g_strdup (fn);
-    st_tab[2] = g_strdup (arg);
-    exec_plugin_func (NULL);
+    // call plugin function
+    if (strlen (fn))
+    {
+        if (st_tab[1]) g_free (st_tab[1]);
+        if (st_tab[2]) g_free (st_tab[2]);
+        st_tab[1] = g_strdup (fn);
+        st_tab[2] = g_strdup (arg);
+        exec_plugin_func (NULL);
+    }
 }
 
 /*----------------------------------------------------------------------------*/
