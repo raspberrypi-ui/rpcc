@@ -127,7 +127,7 @@ static void load_plugin (GtkWidget *, const char *filename)
 
     if (!strstr (filename, ".so")) return;
     path = g_build_filename (PLUGIN_PATH, filename, NULL);
-    phandle = dlopen (path, RTLD_LAZY);
+    phandle = dlopen (path, RTLD_LAZY | RTLD_GLOBAL);
     g_free (path);
     if (!phandle) {
         return;
