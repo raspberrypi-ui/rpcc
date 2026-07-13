@@ -38,16 +38,10 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 /* Typedefs and macros */
 /*----------------------------------------------------------------------------*/
 
-typedef enum {
-    WM_OPENBOX,
-    WM_WAYFIRE,
-    WM_LABWC } wm_type;
-
 /*----------------------------------------------------------------------------*/
 /* Global data */
 /*----------------------------------------------------------------------------*/
 
-static wm_type wm;
 static GList *plugin_handles = NULL;
 static GtkWidget *dlg, *msg_dlg, *nb;
 static gulong draw_id;
@@ -600,13 +594,6 @@ int main (int argc, char* argv[])
     bindtextdomain (GETTEXT_PACKAGE, PACKAGE_LOCALE_DIR);
     bind_textdomain_codeset (GETTEXT_PACKAGE, "UTF-8");
     textdomain (GETTEXT_PACKAGE);
-
-    if (getenv ("WAYLAND_DISPLAY"))
-    {
-        if (getenv ("WAYFIRE_CONFIG_FILE")) wm = WM_WAYFIRE;
-        else wm = WM_LABWC;
-    }
-    else wm = WM_OPENBOX;
 
     gtk_init (&argc, &argv);
 
