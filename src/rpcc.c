@@ -112,21 +112,25 @@ static void load_plugin (GtkWidget *, const char *filename)
     GtkWidget *label, *page, *icon, *box;
     void *phandle;
     char *path;
-    int count, tab, font_height;
+    int count, tab, font_height, scale, flags;
     const char *name, *tablabel;
     GdkPixbuf *pixbuf;
     PangoFontDescription *font_desc;
     GtkStyleContext *sc;
-    int scale;
 
     if (!strstr (filename, ".so")) return;
+
+    flags = RTLD_LAZY;
+    // the wf-panel-pi plugin needs to load panel plugins, which require access to functions in the plugin
+    if (!g_strcmp0 (filename, "librpcc_wf-panel-pi.so")) flags |= RTLD_GLOBAL;
+
     path = g_build_filename (PLUGIN_PATH, filename, NULL);
-    phandle = dlopen (path, RTLD_LAZY | RTLD_GLOBAL);
+    phandle = dlopen (path, flags);
     g_free (path);
-    if (!phandle) {
-        return;
-    }
-    if (!verify_interface (phandle)) {
+
+    if (!phandle) return;
+    if (!verify_interface (phandle))
+    {
         dlclose (phandle);
         fprintf (stderr, "%s does not conform to the API interface\n", filename);
         return;
