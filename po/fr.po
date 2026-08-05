@@ -8,7 +8,7 @@ msgstr ""
 "Project-Id-Version: rpcc\n"
 "Report-Msgid-Bugs-To: \n"
 "POT-Creation-Date: 2026-04-01 16:58+0200\n"
-"PO-Revision-Date: 2026-08-05 17:40+0200\n"
+"PO-Revision-Date: 2026-08-05 21:32+0200\n"
 "Last-Translator: Pierre Gobin <p.dev@gobin.cc>\n"
 "Language-Team: \n"
 "Language: fr\n"
@@ -44,7 +44,7 @@ msgstr "Chargement de la configuration - merci de patienter..."
 
 #: data/rpcc.ui:8 data/rpcc.ui:153 data/rpcc.desktop.in:3
 msgid "Control Centre"
-msgstr "Centre de contrôle"
+msgstr "Centre de Contrôle"
 
 #: data/rpcc.ui:25
 msgid "_Close"
