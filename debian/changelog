@@ -1,3 +1,9 @@
+rpcc (0.16) trixie; urgency=medium
+
+  * Add French translation
+
+ -- Simon Long <simon@raspberrypi.com>  Thu, 06 Aug 2026 13:55:19 +0100
+
 rpcc (0.15) trixie; urgency=medium
 
   * Add RTLD_GLOBAL flag to allow plugins to access each other's exports
