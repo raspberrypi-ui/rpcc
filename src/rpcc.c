@@ -494,10 +494,12 @@ static gboolean init_window (gpointer)
     {
         while ((dir = readdir (d)))
         {
+            if (dir->d_type != DT_REG) continue;
+            printf ("loading plugin %s...\n", dir->d_name);
             load_plugin (nb, dir->d_name);
         }
+        closedir (d);
     }
-    closedir (d);
 
     if (!st_tab[0]) gtk_notebook_set_current_page (GTK_NOTEBOOK (nb), tab);
 

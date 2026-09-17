@@ -1,3 +1,9 @@
+rpcc (0.18) trixie; urgency=medium
+
+  * Report plugins as they load to help find problems
+
+ -- Simon Long <simon@raspberrypi.com>  Thu, 17 Sep 2026 16:07:14 +0100
+
 rpcc (0.17) trixie; urgency=medium
 
   * Add Georgian translation
