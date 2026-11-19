@@ -191,7 +191,7 @@
               <object class="GtkLabel">
                 <property name="visible">True</property>
                 <property name="can-focus">False</property>
-                <property name="label" translatable="yes">Debian Version:</property>
+                <property name="label" translatable="yes">Image Version:</property>
               </object>
               <packing>
                 <property name="expand">False</property>
@@ -200,7 +200,7 @@
               </packing>
             </child>
             <child>
-              <object class="GtkLabel" id="lbl_debian">
+              <object class="GtkLabel" id="lbl_image">
                 <property name="visible">True</property>
                 <property name="can-focus">False</property>
                 <property name="label" translatable="yes">not available</property>
@@ -227,7 +227,7 @@
               <object class="GtkLabel">
                 <property name="visible">True</property>
                 <property name="can-focus">False</property>
-                <property name="label" translatable="yes">Image Version:</property>
+                <property name="label" translatable="yes">Debian Version:</property>
               </object>
               <packing>
                 <property name="expand">False</property>
@@ -236,7 +236,7 @@
               </packing>
             </child>
             <child>
-              <object class="GtkLabel" id="lbl_image">
+              <object class="GtkLabel" id="lbl_debian">
                 <property name="visible">True</property>
                 <property name="can-focus">False</property>
                 <property name="label" translatable="yes">not available</property>
