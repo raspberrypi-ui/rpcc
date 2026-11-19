@@ -33,6 +33,20 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 /* Typedefs and macros */
 /*----------------------------------------------------------------------------*/
 
+#if defined(__aarch64__)
+    #define ARCH_NAME "arm64"     /* 64-bit ARM */
+#elif defined(__arm__)
+    #define ARCH_NAME "armhf"     /* 32-bit ARM */
+#elif defined(__x86_64__)
+    #define ARCH_NAME "amd64"     /* 64-bit x86 */
+#elif defined(__i386__)
+    #define ARCH_NAME "i386"      /* 32-bit x86 */
+#else
+    #define ARCH_NAME "unknown"
+#endif
+
+#define TO_REMOVE "\" \n\t:"
+
 /*----------------------------------------------------------------------------*/
 /* Global data */
 /*----------------------------------------------------------------------------*/
@@ -52,7 +66,7 @@ static void read_label_from_file (const char *label, const char *file, const cha
 {
     FILE *fp;
     char *line;
-    size_t len;
+    size_t len, index;
     GtkWidget *wid;
 
     fp = fopen (file, "rb");
@@ -64,17 +78,25 @@ static void read_label_from_file (const char *label, const char *file, const cha
     {
         if (!start || !strncmp (start, line, strlen (start)))
         {
-            line[strcspn (line, "\n")] = 0;
-            wid = (GtkWidget *) gtk_builder_get_object (builder, label);
-            gtk_label_set_text (GTK_LABEL (wid), line + (start ? strlen (start) : 0));
+            index = strlen (line);
+            if (index)
+            {
+                index--;
+                while (index && strchr (TO_REMOVE, line[index])) line[index--] = 0;
+                index = start ? strlen (start) : 0;
+                while (line[index] && strchr (TO_REMOVE, line[index])) index++;
+                if (line[index])
+                {
+                    wid = (GtkWidget *) gtk_builder_get_object (builder, label);
+                    gtk_label_set_text (GTK_LABEL (wid), &line[index]);
+                }
+            }
             break;
         }
     }
 
     free (line);
     fclose (fp);
-
-    return;
 }
 
 /*----------------------------------------------------------------------------*/
@@ -95,11 +117,17 @@ d0110ed09f2492bbd972ec, stage4
  Host- cat /sys/class/dmi/id/product_name 2>/dev/null || tr -d '\0' < /proc/device-tree/model
  /sys/firmware/devicetree/base/model */
 
+    GtkWidget *wid;
+
     read_label_from_file ("lbl_platform", "/sys/firmware/devicetree/base/model", NULL);
     read_label_from_file ("lbl_memory", "/proc/meminfo", "MemTotal:");
     read_label_from_file ("lbl_debian", "/etc/os-release", "PRETTY_NAME=");
     read_label_from_file ("lbl_kernel", "/proc/sys/kernel/osrelease", NULL);
     read_label_from_file ("lbl_image", "/etc/rpi-issue", NULL);
+    read_label_from_file ("lbl_serial", "/proc/cpuinfo", "Serial");
+
+    wid = (GtkWidget *) gtk_builder_get_object (builder, "lbl_arch");
+    gtk_label_set_text (GTK_LABEL (wid), ARCH_NAME);
 }
 
 /*----------------------------------------------------------------------------*/
