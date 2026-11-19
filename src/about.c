@@ -45,7 +45,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
     #define ARCH_NAME "unknown"
 #endif
 
-#define TO_REMOVE "\" \n\t:"
+#define TO_REMOVE "\"\n\t: "
 
 /*----------------------------------------------------------------------------*/
 /* Global data */
@@ -118,6 +118,8 @@ d0110ed09f2492bbd972ec, stage4
  /sys/firmware/devicetree/base/model */
 
     GtkWidget *wid;
+    unsigned long memsize;
+    char *buf;
 
     read_label_from_file ("lbl_platform", "/sys/firmware/devicetree/base/model", NULL);
     read_label_from_file ("lbl_memory", "/proc/meminfo", "MemTotal:");
@@ -128,6 +130,19 @@ d0110ed09f2492bbd972ec, stage4
 
     wid = (GtkWidget *) gtk_builder_get_object (builder, "lbl_arch");
     gtk_label_set_text (GTK_LABEL (wid), ARCH_NAME);
+
+    wid = (GtkWidget *) gtk_builder_get_object (builder, "lbl_memory");
+    if (sscanf (gtk_label_get_text (GTK_LABEL (wid)), "%lu", &memsize) == 1)
+    {
+        memsize /= 262144; // size in 0.25GB
+        memsize++;
+        if (memsize < 4)
+            buf = g_strdup_printf (_("%lu MB"), memsize * 256);
+        else
+            buf = g_strdup_printf (_("%lu GB"), memsize / 4);
+        gtk_label_set_text (GTK_LABEL (wid), buf);
+        g_free (buf);
+    }
 }
 
 /*----------------------------------------------------------------------------*/
