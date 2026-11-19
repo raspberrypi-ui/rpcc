@@ -48,12 +48,79 @@ static GtkWidget *main_dlg;
 /* Helper functions */
 /*----------------------------------------------------------------------------*/
 
+static char *read_from_file (const char *file, char *start)
+{
+    FILE *fp;
+    char *line;
+    size_t len;
+
+    fp = fopen (file, "rb");
+    if (!fp) return NULL;
+
+    line = NULL;
+    len = 0;
+    while (getline (&line, &len, fp) != -1)
+    {
+        if (!start || !strncmp (start, line, strlen (start)))
+        {
+            fclose (fp);
+            line[strcspn (line, "\n")] = 0;
+            return line;
+        }
+    }
+
+    free (line);
+    fclose (fp);
+
+    return NULL;
+}
+
+
 /*----------------------------------------------------------------------------*/
 /* Initial configuration                                                      */
 /*----------------------------------------------------------------------------*/
 
 static void init_config (void)
 {
+    /*
+     * /etc/os-release contains PRETTY_NAME="Debian GNU/Linux 13 (trixie)"
+     * /proc/version contains Linux version 6.18.62+rpt-rpi-2712 (serge@raspberrypi.com) (aarch64-linux-gnu-gcc-14 (Debian 14.2.0-19) 14.2.0, GNU ld (GNU Binutils for Debian) 2.44) #1 SMP PREEMPT Debian 1:6.18.62-1+rpt1~beta1 (2026-11-12)
+     * /proc/sys/kernel/osrelease contains 6.18.62+rpt-rpi-2712
+     * /etc/rpi-issue contains Raspberry Pi reference 2026-10-06
+Generated using pi-gen, https://github.com/RPi-Distro/pi-gen, b2cd98a9ee08a31ef7
+d0110ed09f2492bbd972ec, stage4
+        * /proc/meminfo contains MemTotal:        8251520 kB
+
+ Host- cat /sys/class/dmi/id/product_name 2>/dev/null || tr -d '\0' < /proc/device-tree/model
+ /sys/firmware/devicetree/base/model */
+
+    char *buf;
+    GtkWidget *wid;
+
+    buf = read_from_file ("/sys/firmware/devicetree/base/model", NULL);
+    wid = (GtkWidget *) gtk_builder_get_object (builder, "lbl_platform");
+    gtk_label_set_text (GTK_LABEL (wid), buf);
+    free (buf);
+
+    buf = read_from_file ("/proc/meminfo", "MemTotal");
+    wid = (GtkWidget *) gtk_builder_get_object (builder, "lbl_memory");
+    gtk_label_set_text (GTK_LABEL (wid), buf);
+    free (buf);
+
+    buf = read_from_file ("/etc/os-release", "PRETTY_NAME");
+    wid = (GtkWidget *) gtk_builder_get_object (builder, "lbl_debian");
+    gtk_label_set_text (GTK_LABEL (wid), buf);
+    free (buf);
+
+    buf = read_from_file ("/proc/sys/kernel/osrelease", NULL);
+    wid = (GtkWidget *) gtk_builder_get_object (builder, "lbl_kernel");
+    gtk_label_set_text (GTK_LABEL (wid), buf);
+    free (buf);
+
+    buf = read_from_file ("/etc/rpi-issue", NULL);
+    wid = (GtkWidget *) gtk_builder_get_object (builder, "lbl_image");
+    gtk_label_set_text (GTK_LABEL (wid), buf);
+    free (buf);
 }
 
 /*----------------------------------------------------------------------------*/
