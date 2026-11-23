@@ -29,6 +29,8 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <gtk/gtk.h>
 #include <glib/gi18n.h>
 
+#include <libudev.h>
+
 /*----------------------------------------------------------------------------*/
 /* Typedefs and macros */
 /*----------------------------------------------------------------------------*/
@@ -101,6 +103,29 @@ static int read_label_from_file (const char *label, const char *file, const char
     return 0;
 }
 
+int get_mem (void)
+{
+    struct udev *udev = udev_new ();
+    struct udev_device *dev = udev_device_new_from_syspath (udev, "/sys/class/dmi/id");
+    guint64 total = 0;
+    if (dev)
+    {
+        const char *cnt = udev_device_get_property_value (dev, "MEMORY_DEVICE_COUNT");
+        int n = cnt ? atoi (cnt) : 0;
+        for (int i = 0; i < n; i++)
+        {
+            char key[64];
+            snprintf (key, sizeof key, "MEMORY_DEVICE_%d_SIZE", i);
+            const char *sz = udev_device_get_property_value (dev, key);
+            if (sz) total += g_ascii_strtoull (sz, NULL, 10);
+        }
+        udev_device_unref (dev);
+    }
+    udev_unref (udev);
+    printf ("%ld\n", total);
+    return total;
+}
+
 /*----------------------------------------------------------------------------*/
 /* Initial configuration                                                      */
 /*----------------------------------------------------------------------------*/
@@ -122,6 +147,8 @@ d0110ed09f2492bbd972ec, stage4
     GtkWidget *wid;
     unsigned long memsize;
     char *buf;
+    
+    get_mem ();
 
     if (!read_label_from_file ("lbl_platform", "/sys/firmware/devicetree/base/model", NULL))
         read_label_from_file ("lbl_platform", "/sys/class/dmi/id/product_name", NULL);
