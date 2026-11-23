@@ -108,7 +108,7 @@ static unsigned long get_mem (void)
     const char *prop;
     char *id;
     guint64 mem = 0;
-    int i;
+    int i, n;
     unsigned char b[4];
 
     // check Pi first
@@ -131,7 +131,8 @@ static unsigned long get_mem (void)
         prop = udev_device_get_property_value (dev, "MEMORY_ARRAY_NUM_DEVICES");
         if (prop)
         {
-            for (i = 0; i < atoi (prop); i++)
+            n = atoi (prop);
+            for (i = 0; i < n; i++)
             {
                 id = g_strdup_printf ("MEMORY_DEVICE_%d_SIZE", i);
                 prop = udev_device_get_property_value (dev, id);
