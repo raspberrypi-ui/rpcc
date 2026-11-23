@@ -103,27 +103,34 @@ static int read_label_from_file (const char *label, const char *file, const char
     return 0;
 }
 
-int get_mem (void)
+static unsigned long get_pc_mem (void)
 {
+    const char *prop;
+    char *id;
+    guint64 mem = 0;
+    int i;
+
     struct udev *udev = udev_new ();
     struct udev_device *dev = udev_device_new_from_syspath (udev, "/sys/class/dmi/id");
-    guint64 total = 0;
     if (dev)
     {
-        const char *cnt = udev_device_get_property_value (dev, "MEMORY_DEVICE_COUNT");
-        int n = cnt ? atoi (cnt) : 0;
-        for (int i = 0; i < n; i++)
+        prop = udev_device_get_property_value (dev, "MEMORY_ARRAY_NUM_DEVICES");
+        if (prop)
         {
-            char key[64];
-            snprintf (key, sizeof key, "MEMORY_DEVICE_%d_SIZE", i);
-            const char *sz = udev_device_get_property_value (dev, key);
-            if (sz) total += g_ascii_strtoull (sz, NULL, 10);
+            for (i = 0; i < atoi (prop); i++)
+            {
+                id = g_strdup_printf ("MEMORY_DEVICE_%d_SIZE", i);
+                prop = udev_device_get_property_value (dev, id);
+                if (prop) mem += g_ascii_strtoull (prop, NULL, 10);
+                g_free (id);
+            }
+            udev_device_unref (dev);
         }
-        udev_device_unref (dev);
     }
     udev_unref (udev);
-    printf ("%ld\n", total);
-    return total;
+    mem /= 1048576L;
+
+    return mem;
 }
 
 /*----------------------------------------------------------------------------*/
@@ -132,27 +139,13 @@ int get_mem (void)
 
 static void init_config (void)
 {
-    /*
-     * /etc/os-release contains PRETTY_NAME="Debian GNU/Linux 13 (trixie)"
-     * /proc/version contains Linux version 6.18.62+rpt-rpi-2712 (serge@raspberrypi.com) (aarch64-linux-gnu-gcc-14 (Debian 14.2.0-19) 14.2.0, GNU ld (GNU Binutils for Debian) 2.44) #1 SMP PREEMPT Debian 1:6.18.62-1+rpt1~beta1 (2026-11-12)
-     * /proc/sys/kernel/osrelease contains 6.18.62+rpt-rpi-2712
-     * /etc/rpi-issue contains Raspberry Pi reference 2026-10-06
-Generated using pi-gen, https://github.com/RPi-Distro/pi-gen, b2cd98a9ee08a31ef7
-d0110ed09f2492bbd972ec, stage4
-        * /proc/meminfo contains MemTotal:        8251520 kB
-
- Host- cat /sys/class/dmi/id/product_name 2>/dev/null || tr -d '\0' < /proc/device-tree/model
- /sys/firmware/devicetree/base/model */
-
     GtkWidget *wid;
     unsigned long memsize;
     char *buf;
     
-    get_mem ();
-
     if (!read_label_from_file ("lbl_platform", "/sys/firmware/devicetree/base/model", NULL))
         read_label_from_file ("lbl_platform", "/sys/class/dmi/id/product_name", NULL);
-    read_label_from_file ("lbl_memory", "/proc/meminfo", "MemTotal:");
+    //read_label_from_file ("lbl_memory", "/proc/meminfo", "MemTotal:");
     read_label_from_file ("lbl_debian", "/etc/os-release", "PRETTY_NAME=");
     read_label_from_file ("lbl_kernel", "/proc/sys/kernel/osrelease", NULL);
     read_label_from_file ("lbl_image", "/etc/rpi-issue", NULL);
@@ -162,17 +155,13 @@ d0110ed09f2492bbd972ec, stage4
     gtk_label_set_text (GTK_LABEL (wid), ARCH_NAME);
 
     wid = (GtkWidget *) gtk_builder_get_object (builder, "lbl_memory");
-    if (sscanf (gtk_label_get_text (GTK_LABEL (wid)), "%lu", &memsize) == 1)
-    {
-        memsize /= 262144; // size in 0.25GB
-        memsize++;
-        if (memsize < 4)
-            buf = g_strdup_printf (_("%lu MB"), memsize * 256);
-        else
-            buf = g_strdup_printf (_("%lu GB"), memsize / 4);
-        gtk_label_set_text (GTK_LABEL (wid), buf);
-        g_free (buf);
-    }
+    memsize = get_pc_mem ();
+    if (memsize % 1024 == 0)
+        buf = g_strdup_printf (_("%lu GB"), memsize / 1024);
+    else
+        buf = g_strdup_printf (_("%lu MB"), memsize);
+    gtk_label_set_text (GTK_LABEL (wid), buf);
+    g_free (buf);
 }
 
 /*----------------------------------------------------------------------------*/
