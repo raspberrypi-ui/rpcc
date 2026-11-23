@@ -103,13 +103,27 @@ static int read_label_from_file (const char *label, const char *file, const char
     return 0;
 }
 
-static unsigned long get_pc_mem (void)
+static unsigned long get_mem (void)
 {
     const char *prop;
     char *id;
     guint64 mem = 0;
     int i;
+    unsigned char b[4];
 
+    // check Pi first
+    FILE *fp = fopen ("/proc/device-tree/chosen/rpi-sdram-size-gbit", "rb");
+    if (fp)
+    {
+        if (fread (b, 1, 4, fp) == 4)
+        {
+            mem = (b[0] << 24) | (b[1] << 16) | (b[2] << 8) | b[3];
+        }
+        fclose (fp);
+        if (mem) return mem * 128L;
+    }
+
+    // fail - try udev for PC
     struct udev *udev = udev_new ();
     struct udev_device *dev = udev_device_new_from_syspath (udev, "/sys/class/dmi/id");
     if (dev)
@@ -145,7 +159,6 @@ static void init_config (void)
     
     if (!read_label_from_file ("lbl_platform", "/sys/firmware/devicetree/base/model", NULL))
         read_label_from_file ("lbl_platform", "/sys/class/dmi/id/product_name", NULL);
-    //read_label_from_file ("lbl_memory", "/proc/meminfo", "MemTotal:");
     read_label_from_file ("lbl_debian", "/etc/os-release", "PRETTY_NAME=");
     read_label_from_file ("lbl_kernel", "/proc/sys/kernel/osrelease", NULL);
     read_label_from_file ("lbl_image", "/etc/rpi-issue", NULL);
@@ -155,7 +168,7 @@ static void init_config (void)
     gtk_label_set_text (GTK_LABEL (wid), ARCH_NAME);
 
     wid = (GtkWidget *) gtk_builder_get_object (builder, "lbl_memory");
-    memsize = get_pc_mem ();
+    memsize = get_mem ();
     if (memsize % 1024 == 0)
         buf = g_strdup_printf (_("%lu GB"), memsize / 1024);
     else
