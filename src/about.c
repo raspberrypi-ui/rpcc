@@ -62,7 +62,7 @@ static GtkWidget *main_dlg;
 /* Helper functions */
 /*----------------------------------------------------------------------------*/
 
-static void read_label_from_file (const char *label, const char *file, const char *start)
+static int read_label_from_file (const char *label, const char *file, const char *start)
 {
     FILE *fp;
     char *line;
@@ -70,7 +70,7 @@ static void read_label_from_file (const char *label, const char *file, const cha
     GtkWidget *wid;
 
     fp = fopen (file, "rb");
-    if (!fp) return;
+    if (!fp) return 0;
 
     line = NULL;
     len = 0;
@@ -89,6 +89,7 @@ static void read_label_from_file (const char *label, const char *file, const cha
                 {
                     wid = (GtkWidget *) gtk_builder_get_object (builder, label);
                     gtk_label_set_text (GTK_LABEL (wid), &line[index]);
+                    return 1;
                 }
             }
             break;
@@ -97,6 +98,7 @@ static void read_label_from_file (const char *label, const char *file, const cha
 
     free (line);
     fclose (fp);
+    return 0;
 }
 
 /*----------------------------------------------------------------------------*/
@@ -121,7 +123,8 @@ d0110ed09f2492bbd972ec, stage4
     unsigned long memsize;
     char *buf;
 
-    read_label_from_file ("lbl_platform", "/sys/firmware/devicetree/base/model", NULL);
+    if (!read_label_from_file ("lbl_platform", "/sys/firmware/devicetree/base/model", NULL))
+        read_label_from_file ("lbl_platform", "/sys/class/dmi/id/product_name", NULL);
     read_label_from_file ("lbl_memory", "/proc/meminfo", "MemTotal:");
     read_label_from_file ("lbl_debian", "/etc/os-release", "PRETTY_NAME=");
     read_label_from_file ("lbl_kernel", "/proc/sys/kernel/osrelease", NULL);
