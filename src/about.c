@@ -30,6 +30,8 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <glib/gi18n.h>
 
 #include <libudev.h>
+#define I_KNOW_THE_PACKAGEKIT_GLIB2_API_IS_SUBJECT_TO_CHANGE
+#include <packagekit-glib2/packagekit.h>
 
 /*----------------------------------------------------------------------------*/
 /* Typedefs and macros */
@@ -91,6 +93,8 @@ static int read_label_from_file (const char *label, const char *file, const char
                 {
                     wid = (GtkWidget *) gtk_builder_get_object (builder, label);
                     gtk_label_set_text (GTK_LABEL (wid), &line[index]);
+                    free (line);
+                    fclose (fp);
                     return 1;
                 }
             }
@@ -139,14 +143,140 @@ static unsigned long get_mem (void)
                 if (prop) mem += g_ascii_strtoull (prop, NULL, 10);
                 g_free (id);
             }
-            udev_device_unref (dev);
         }
+        udev_device_unref (dev);
     }
     udev_unref (udev);
     mem /= 1048576L;
 
     return mem;
 }
+
+static gint64 get_last_update_apt (char **type)
+{
+    char *line = NULL, *start = NULL, *last_start = NULL;
+    size_t len = 0;
+    GDateTime *td;
+    gint64 res = 0;
+    FILE *fp = fopen ("/var/log/apt/history.log", "rb");
+    GRegex *re = g_regex_new ("^Commandline: apt(-get)?( \\S+)* (full-|dist-)?upgrade( |$)", 0, 0, NULL);
+    int d, mo, y, h, mi, s;
+
+    if (fp)
+    {
+        while (getline (&line, &len, fp) != -1)
+        {
+            if (!strncmp (line, "Start-Date:", 11))
+            {
+                g_free (start);
+                start = g_strdup (line);
+            }
+            else if (g_regex_match (re, line, 0, NULL))
+            {
+                g_free (last_start);
+                g_free (*type);
+                line[strlen (line) - 1] = 0;
+                last_start = g_strdup (start);
+                *type = g_strdup (line + 13);
+            }
+        }
+        fclose (fp);
+    }
+    g_regex_unref (re);
+
+    if (last_start)
+    {
+        if (sscanf (last_start + 12, "%d-%d-%d %d:%d:%d", &y, &mo, &d, &h, &mi, &s) == 6)
+        {
+            GTimeZone *tz = g_time_zone_new_local ();
+            td = g_date_time_new (tz, y, mo, d, h, mi, s);
+            if (td)
+            {
+                res = g_date_time_to_unix (td);
+                g_date_time_unref (td);
+            }
+            g_time_zone_unref (tz);
+        }
+    }
+
+    g_free (line);
+    g_free (start);
+    g_free (last_start);
+
+    return res;
+}
+
+static void got_transactions (PkClient *client, GAsyncResult *res, gpointer data)
+{
+    PkResults *results;
+    PkError *pkerror;
+    GError *error = NULL;
+    int i;
+    const char *cmd;
+    char *lastcmd = NULL, *lastapt = NULL, *ts, *lbl;
+    GDateTime *td;
+    gint64 t_pk = 0, t_apt = 0;
+    GtkWidget *wid;
+
+    results = pk_client_generic_finish (client, res, &error);
+    if (!error)
+    {
+        pkerror = pk_results_get_error_code (results);
+        if (!pkerror)
+        {
+            GPtrArray *array = pk_results_get_transaction_array (results);
+            for (i = 0; i < array->len; i++)
+            {
+                PkTransactionPast *item = g_ptr_array_index (array, i);
+                if (pk_transaction_past_get_role (item) == PK_ROLE_ENUM_UPDATE_PACKAGES &&
+                    pk_transaction_past_get_succeeded (item) == TRUE)
+                {
+                    cmd = pk_transaction_past_get_cmdline (item);
+                    if (cmd && !strstr (cmd, "rp-prefapps"))
+                    {
+                        g_free (lastcmd);
+                        lastcmd = g_strdup (cmd);
+                        td = g_date_time_new_from_iso8601 (pk_transaction_past_get_timespec (item), NULL);
+                        if (td)
+                        {
+                            t_pk = g_date_time_to_unix (td);
+                            g_date_time_unref (td);
+                        }
+                    }
+                }
+            }
+            g_ptr_array_unref (array);
+        }
+        else g_object_unref (pkerror);
+        g_object_unref (results);
+    }
+    else g_error_free (error);
+    g_object_unref (client);
+
+    wid = (GtkWidget *) gtk_builder_get_object (builder, "lbl_update");
+    t_apt = get_last_update_apt (&lastapt);
+
+    if (t_apt || t_pk)
+    {
+        td = g_date_time_new_from_unix_utc (t_apt > t_pk ? t_apt : t_pk);
+        ts = g_date_time_format (td, "%X %x UTC" );
+        g_date_time_unref (td);
+        lbl = g_strdup_printf ("%s (%s)", ts, t_apt > t_pk ? lastapt : lastcmd);
+        g_free (ts);
+        gtk_label_set_text (GTK_LABEL (wid), lbl);
+        g_free (lbl);
+    }
+    g_free (lastapt);
+    g_free (lastcmd);
+}
+
+
+static void get_packagekit_transactions (void)
+{
+    PkClient *client = pk_client_new ();
+    pk_client_get_old_transactions_async (client, 0, NULL, NULL, NULL, (GAsyncReadyCallback) got_transactions, NULL);
+}
+
 
 /*----------------------------------------------------------------------------*/
 /* Initial configuration                                                      */
@@ -158,6 +288,8 @@ static void init_config (void)
     unsigned long memsize;
     char *buf;
     
+    get_packagekit_transactions ();
+
     if (!read_label_from_file ("lbl_platform", "/sys/firmware/devicetree/base/model", NULL))
         read_label_from_file ("lbl_platform", "/sys/class/dmi/id/product_name", NULL);
     read_label_from_file ("lbl_debian", "/etc/os-release", "PRETTY_NAME=");
@@ -170,12 +302,15 @@ static void init_config (void)
 
     wid = (GtkWidget *) gtk_builder_get_object (builder, "lbl_memory");
     memsize = get_mem ();
-    if (memsize % 1024 == 0)
-        buf = g_strdup_printf (_("%lu GB"), memsize / 1024);
-    else
-        buf = g_strdup_printf (_("%lu MB"), memsize);
-    gtk_label_set_text (GTK_LABEL (wid), buf);
-    g_free (buf);
+    if (memsize)
+    {
+        if (memsize % 1024 == 0)
+            buf = g_strdup_printf (_("%lu GB"), memsize / 1024);
+        else
+            buf = g_strdup_printf (_("%lu MB"), memsize);
+        gtk_label_set_text (GTK_LABEL (wid), buf);
+        g_free (buf);
+    }
 }
 
 /*----------------------------------------------------------------------------*/
