@@ -156,11 +156,11 @@ static gint64 get_last_update_apt (char **type)
 {
     char *line = NULL, *start = NULL, *last_start = NULL;
     size_t len = 0;
+    int d, mo, y, h, mi, s;
     GDateTime *td;
     gint64 res = 0;
     FILE *fp = fopen ("/var/log/apt/history.log", "rb");
     GRegex *re = g_regex_new ("^Commandline: apt(-get)?( \\S+)* (full-|dist-)?upgrade( |$)", 0, 0, NULL);
-    int d, mo, y, h, mi, s;
 
     if (fp)
     {
@@ -206,7 +206,7 @@ static gint64 get_last_update_apt (char **type)
     return res;
 }
 
-static void got_transactions (PkClient *client, GAsyncResult *res, gpointer data)
+static void transaction_details (PkClient *client, GAsyncResult *res, gpointer data)
 {
     PkResults *results;
     PkError *pkerror;
@@ -270,14 +270,6 @@ static void got_transactions (PkClient *client, GAsyncResult *res, gpointer data
     g_free (lastcmd);
 }
 
-
-static void get_packagekit_transactions (void)
-{
-    PkClient *client = pk_client_new ();
-    pk_client_get_old_transactions_async (client, 0, NULL, NULL, NULL, (GAsyncReadyCallback) got_transactions, NULL);
-}
-
-
 /*----------------------------------------------------------------------------*/
 /* Initial configuration                                                      */
 /*----------------------------------------------------------------------------*/
@@ -287,8 +279,10 @@ static void init_config (void)
     GtkWidget *wid;
     unsigned long memsize;
     char *buf;
-    
-    get_packagekit_transactions ();
+    PkClient *client = pk_client_new ();
+
+    // query PackageKit for the update history
+    pk_client_get_old_transactions_async (client, 0, NULL, NULL, NULL, (GAsyncReadyCallback) transaction_details, NULL);
 
     if (!read_label_from_file ("lbl_platform", "/sys/firmware/devicetree/base/model", NULL))
         read_label_from_file ("lbl_platform", "/sys/class/dmi/id/product_name", NULL);
