@@ -276,8 +276,8 @@ static void get_last_update (PkClient *client, GAsyncResult *res, gpointer data)
     if (t_up)
     {
         td = g_date_time_new_from_unix_utc (t_up);
-        ts = g_date_time_format (td, "%x %X UTC");
-        lbl = g_strdup_printf ("%s (%s)", ts, lastcmd);
+        ts = g_date_time_format (td, "%x %X");
+        lbl = g_strdup_printf (_("%s UTC (%s)"), ts, lastcmd);
         gtk_label_set_text (GTK_LABEL (wid), lbl);
         g_free (ts);
         g_free (lbl);
