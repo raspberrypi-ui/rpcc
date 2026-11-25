@@ -62,6 +62,11 @@ static GtkWidget *main_dlg;
 /* Function prototypes */
 /*----------------------------------------------------------------------------*/
 
+static int read_label_from_file (const char *label, const char *file, const char *start);
+static unsigned long get_mem (void);
+static gint64 get_last_update_apt (char **type);
+static void get_last_update (PkClient *client, GAsyncResult *res, gpointer data);
+
 /*----------------------------------------------------------------------------*/
 /* Helper functions */
 /*----------------------------------------------------------------------------*/
@@ -156,11 +161,13 @@ static gint64 get_last_update_apt (char **type)
 {
     char *line = NULL, *start = NULL, *last_start = NULL;
     size_t len = 0;
-    int d, mo, y, h, mi, s;
+    int dy, mo, yr, hr, mi, sc;
     GDateTime *td;
     gint64 res = 0;
-    FILE *fp = fopen ("/var/log/apt/history.log", "rb");
+
     GRegex *re = g_regex_new ("^Commandline: apt(-get)?( \\S+)* (full-|dist-)?upgrade( |$)", 0, 0, NULL);
+    GTimeZone *tz = g_time_zone_new_local ();
+    FILE *fp = fopen ("/var/log/apt/history.log", "rb");
 
     if (fp)
     {
@@ -182,31 +189,30 @@ static gint64 get_last_update_apt (char **type)
         }
         fclose (fp);
     }
-    g_regex_unref (re);
 
     if (last_start)
     {
-        if (sscanf (last_start + 12, "%d-%d-%d %d:%d:%d", &y, &mo, &d, &h, &mi, &s) == 6)
+        if (sscanf (last_start + 12, "%d-%d-%d %d:%d:%d", &yr, &mo, &dy, &hr, &mi, &sc) == 6)
         {
-            GTimeZone *tz = g_time_zone_new_local ();
-            td = g_date_time_new (tz, y, mo, d, h, mi, s);
+            td = g_date_time_new (tz, yr, mo, dy, hr, mi, sc);
             if (td)
             {
                 res = g_date_time_to_unix (td);
                 g_date_time_unref (td);
             }
-            g_time_zone_unref (tz);
         }
     }
 
     g_free (line);
     g_free (start);
     g_free (last_start);
+    g_time_zone_unref (tz);
+    g_regex_unref (re);
 
     return res;
 }
 
-static void transaction_details (PkClient *client, GAsyncResult *res, gpointer data)
+static void get_last_update (PkClient *client, GAsyncResult *res, gpointer data)
 {
     PkResults *results;
     PkError *pkerror;
@@ -215,8 +221,10 @@ static void transaction_details (PkClient *client, GAsyncResult *res, gpointer d
     const char *cmd;
     char *lastcmd = NULL, *lastapt = NULL, *ts, *lbl;
     GDateTime *td;
-    gint64 t_pk = 0, t_apt = 0;
+    gint64 t_up = 0, t_apt = 0;
     GtkWidget *wid;
+    GPtrArray *array;
+    PkTransactionPast *trans;
 
     results = pk_client_generic_finish (client, res, &error);
     if (!error)
@@ -224,22 +232,22 @@ static void transaction_details (PkClient *client, GAsyncResult *res, gpointer d
         pkerror = pk_results_get_error_code (results);
         if (!pkerror)
         {
-            GPtrArray *array = pk_results_get_transaction_array (results);
+            array = pk_results_get_transaction_array (results);
             for (i = 0; i < array->len; i++)
             {
-                PkTransactionPast *item = g_ptr_array_index (array, i);
-                if (pk_transaction_past_get_role (item) == PK_ROLE_ENUM_UPDATE_PACKAGES &&
-                    pk_transaction_past_get_succeeded (item) == TRUE)
+                trans = g_ptr_array_index (array, i);
+                if (pk_transaction_past_get_role (trans) == PK_ROLE_ENUM_UPDATE_PACKAGES &&
+                    pk_transaction_past_get_succeeded (trans))
                 {
-                    cmd = pk_transaction_past_get_cmdline (item);
+                    cmd = pk_transaction_past_get_cmdline (trans);
                     if (cmd && !strstr (cmd, "rp-prefapps"))
                     {
                         g_free (lastcmd);
                         lastcmd = g_strdup (cmd);
-                        td = g_date_time_new_from_iso8601 (pk_transaction_past_get_timespec (item), NULL);
+                        td = g_date_time_new_from_iso8601 (pk_transaction_past_get_timespec (trans), NULL);
                         if (td)
                         {
-                            t_pk = g_date_time_to_unix (td);
+                            t_up = g_date_time_to_unix (td);
                             g_date_time_unref (td);
                         }
                     }
@@ -256,16 +264,26 @@ static void transaction_details (PkClient *client, GAsyncResult *res, gpointer d
     wid = (GtkWidget *) gtk_builder_get_object (builder, "lbl_update");
     t_apt = get_last_update_apt (&lastapt);
 
-    if (t_apt || t_pk)
+    if (t_apt > t_up)
     {
-        td = g_date_time_new_from_unix_utc (t_apt > t_pk ? t_apt : t_pk);
-        ts = g_date_time_format (td, "%X %x UTC" );
-        g_date_time_unref (td);
-        lbl = g_strdup_printf ("%s (%s)", ts, t_apt > t_pk ? lastapt : lastcmd);
-        g_free (ts);
-        gtk_label_set_text (GTK_LABEL (wid), lbl);
-        g_free (lbl);
+        // apt update was more recent than PackageKit
+        t_up = t_apt;
+        g_free (lastcmd);
+        lastcmd = lastapt;
+        lastapt = NULL;
     }
+
+    if (t_up)
+    {
+        td = g_date_time_new_from_unix_utc (t_up);
+        ts = g_date_time_format (td, "%x %X UTC");
+        lbl = g_strdup_printf ("%s (%s)", ts, lastcmd);
+        gtk_label_set_text (GTK_LABEL (wid), lbl);
+        g_free (ts);
+        g_free (lbl);
+        g_date_time_unref (td);
+    }
+
     g_free (lastapt);
     g_free (lastcmd);
 }
@@ -282,7 +300,7 @@ static void init_config (void)
     PkClient *client = pk_client_new ();
 
     // query PackageKit for the update history
-    pk_client_get_old_transactions_async (client, 0, NULL, NULL, NULL, (GAsyncReadyCallback) transaction_details, NULL);
+    pk_client_get_old_transactions_async (client, 0, NULL, NULL, NULL, (GAsyncReadyCallback) get_last_update, NULL);
 
     if (!read_label_from_file ("lbl_platform", "/sys/firmware/devicetree/base/model", NULL))
         read_label_from_file ("lbl_platform", "/sys/class/dmi/id/product_name", NULL);

@@ -1,3 +1,9 @@
+rpcc (0.19) trixie; urgency=medium
+
+  * Add about box
+
+ -- Simon Long <simon@raspberrypi.com>  Wed, 25 Nov 2026 11:51:06 +0000
+
 rpcc (0.18) trixie; urgency=medium
 
   * Report plugins as they load to help find problems
