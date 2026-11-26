@@ -63,7 +63,7 @@ static GtkWidget *main_dlg;
 static int read_label_from_file (const char *label, const char *file, const char *start);
 static unsigned long get_mem (void);
 static GDataInputStream *open_log (const char *path);
-static gint64 get_last_update_apt (char **type);
+static gboolean get_last_update_apt (char **ctype, char **ctime);
 
 /*----------------------------------------------------------------------------*/
 /* Helper functions */
@@ -182,18 +182,15 @@ static GDataInputStream *open_log (const char *path)
     return dis;
 }
 
-static gint64 get_last_update_apt (char **type)
+static gboolean get_last_update_apt (char **ctype, char **ctime)
 {
     GDataInputStream *dis;
     char *line, *path, *cmd, *last_cmd = NULL, *last_end = NULL;
     gboolean valid;
-    int i, dy, mo, yr, hr, mi, sc;
-    GDateTime *td;
-    gint64 res = 0;
+    int i;
 
     // match apt upgrades, plus PackageKit system updates
     GRegex *re = g_regex_new ("^Commandline: (apt(-get)?( \\S+)* (full-|dist-)?upgrade( |$)|packagekit role='update-packages')", 0, 0, NULL);
-    GTimeZone *tz = g_time_zone_new_local ();
 
     // search the current log, then rotated logs from newest to oldest, until an update is found
     for (i = 0; last_end == NULL; i++)
@@ -256,27 +253,15 @@ static gint64 get_last_update_apt (char **type)
         // loop exits when last_end has a value in it, or if there is no valid stream any more
     }
 
-    if (last_end)
-    {
-        if (sscanf (last_end, "%d-%d-%d %d:%d:%d", &yr, &mo, &dy, &hr, &mi, &sc) == 6)
-        {
-            td = g_date_time_new (tz, yr, mo, dy, hr, mi, sc);
-            if (td)
-            {
-                res = g_date_time_to_unix (td);
-                g_date_time_unref (td);
-            }
-        }
-        g_free (last_end);
-    }
-
-    if (res) *type = last_cmd;
-    else g_free (last_cmd);
-
-    g_time_zone_unref (tz);
     g_regex_unref (re);
 
-    return res;
+    if (last_end)
+    {
+        *ctype = last_cmd;
+        *ctime = last_end;
+        return TRUE;
+    }
+    else return FALSE;
 }
 
 /*----------------------------------------------------------------------------*/
@@ -288,9 +273,7 @@ static void init_config (void)
     GtkWidget *wid;
     unsigned long memsize;
     char *buf;
-    char *upcmd = NULL, *uptime;
-    GDateTime *td;
-    gint64 t_up;
+    char *upcmd = NULL, *uptime = NULL;
 
     if (!read_label_from_file ("lbl_platform", "/sys/firmware/devicetree/base/model", NULL))
         read_label_from_file ("lbl_platform", "/sys/class/dmi/id/product_name", NULL);
@@ -314,19 +297,11 @@ static void init_config (void)
         g_free (buf);
     }
 
-    t_up = get_last_update_apt (&upcmd);
-    if (t_up)
+    if (get_last_update_apt (&upcmd, &uptime))
     {
-        td = g_date_time_new_from_unix_utc (t_up);
-        uptime = g_date_time_format (td, "%x %X");
-        g_date_time_unref (td);
-
-        buf = g_strdup_printf (_("%s UTC"), uptime);
-        g_free (uptime);
-
         wid = (GtkWidget *) gtk_builder_get_object (builder, "lbl_update");
-        gtk_label_set_text (GTK_LABEL (wid), buf);
-        g_free (buf);
+        gtk_label_set_text (GTK_LABEL (wid), uptime);
+        g_free (uptime);
 
         wid = (GtkWidget *) gtk_builder_get_object (builder, "lbl_updateby");
         gtk_label_set_text (GTK_LABEL (wid), upcmd);
