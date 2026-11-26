@@ -1,3 +1,9 @@
+rpcc (0.20) trixie; urgency=medium
+
+  * Add missing dependencies
+
+ -- Simon Long <simon@raspberrypi.com>  Thu, 26 Nov 2026 09:27:48 +0000
+
 rpcc (0.19) trixie; urgency=medium
 
   * Add about box
