@@ -1,3 +1,9 @@
+rpcc (0.21) trixie; urgency=medium
+
+  * Handle older apt logs; stop querying PackageKit transactions
+
+ -- Simon Long <simon@raspberrypi.com>  Thu, 26 Nov 2026 12:49:09 +0000
+
 rpcc (0.20) trixie; urgency=medium
 
   * Add missing dependencies

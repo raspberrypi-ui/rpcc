@@ -30,8 +30,6 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <glib/gi18n.h>
 
 #include <libudev.h>
-#define I_KNOW_THE_PACKAGEKIT_GLIB2_API_IS_SUBJECT_TO_CHANGE
-#include <packagekit-glib2/packagekit.h>
 
 /*----------------------------------------------------------------------------*/
 /* Typedefs and macros */
@@ -64,8 +62,8 @@ static GtkWidget *main_dlg;
 
 static int read_label_from_file (const char *label, const char *file, const char *start);
 static unsigned long get_mem (void);
+static GDataInputStream *open_log (const char *path);
 static gint64 get_last_update_apt (char **type);
-static void get_last_update (PkClient *client, GAsyncResult *res, gpointer data);
 
 /*----------------------------------------------------------------------------*/
 /* Helper functions */
@@ -157,42 +155,110 @@ static unsigned long get_mem (void)
     return mem;
 }
 
+static GDataInputStream *open_log (const char *path)
+{
+    GFile *file;
+    GFileInputStream *fis;
+    GInputStream *is;
+    GConverter *conv;
+    GDataInputStream *dis;
+
+    file = g_file_new_for_path (path);
+    fis = g_file_read (file, NULL, NULL);
+    g_object_unref (file);
+    if (!fis) return NULL;
+
+    if (g_str_has_suffix (path, ".gz"))
+    {
+        conv = G_CONVERTER (g_zlib_decompressor_new (G_ZLIB_COMPRESSOR_FORMAT_GZIP));
+        is = g_converter_input_stream_new (G_INPUT_STREAM (fis), conv);
+        g_object_unref (conv);
+        g_object_unref (fis);
+    }
+    else is = G_INPUT_STREAM (fis);
+
+    dis = g_data_input_stream_new (is);
+    g_object_unref (is);
+    return dis;
+}
+
 static gint64 get_last_update_apt (char **type)
 {
-    char *line = NULL, *start = NULL, *last_start = NULL;
-    size_t len = 0;
-    int dy, mo, yr, hr, mi, sc;
+    GDataInputStream *dis;
+    char *line, *path, *cmd, *last_cmd = NULL, *last_end = NULL;
+    gboolean valid;
+    int i, dy, mo, yr, hr, mi, sc;
     GDateTime *td;
     gint64 res = 0;
 
-    GRegex *re = g_regex_new ("^Commandline: apt(-get)?( \\S+)* (full-|dist-)?upgrade( |$)", 0, 0, NULL);
+    // match apt upgrades, plus PackageKit system updates
+    GRegex *re = g_regex_new ("^Commandline: (apt(-get)?( \\S+)* (full-|dist-)?upgrade( |$)|packagekit role='update-packages')", 0, 0, NULL);
     GTimeZone *tz = g_time_zone_new_local ();
-    FILE *fp = fopen ("/var/log/apt/history.log", "rb");
 
-    if (fp)
+    // search the current log, then rotated logs from newest to oldest, until an update is found
+    for (i = 0; last_end == NULL; i++)
     {
-        while (getline (&line, &len, fp) != -1)
+        valid = FALSE;
+        cmd = NULL;
+
+        // open either the current (uncompressed) log or an older compressed log
+        if (i == 0) path = g_strdup ("/var/log/apt/history.log");
+        else path = g_strdup_printf ("/var/log/apt/history.log.%d.gz", i);
+        dis = open_log (path);
+
+        // just in case, try to open an uncompressed older log - never happens at present on RPiOS
+        if (!dis && i > 0)
+        {
+            g_free (path);
+            path = g_strdup_printf ("/var/log/apt/history.log.%d", i);
+            dis = open_log (path);
+        }
+        g_free (path);
+
+        // if this log doesn't exist, give up - first check if the current log has just rotated
+        if (!dis)
+        {
+            if (i == 0) continue;
+            break;
+        }
+
+        // at this point, we have a valid input stream from a log - parse it for the last valid entry matching the regex
+        while ((line = g_data_input_stream_read_line (dis, NULL, NULL, NULL)))
         {
             if (!strncmp (line, "Start-Date:", 11))
             {
-                g_free (start);
-                start = g_strdup (line);
+                g_free (cmd);
+                cmd = NULL;
+                valid = TRUE;
             }
+            else if (!strncmp (line, "Error:", 6)) valid = FALSE;
             else if (g_regex_match (re, line, 0, NULL))
             {
-                g_free (last_start);
-                g_free (*type);
-                line[strlen (line) - 1] = 0;
-                last_start = g_strdup (start);
-                *type = g_strdup (line + 13);
+                g_free (cmd);
+                cmd = g_strdup (line + 13);
             }
+            else if (!strncmp (line, "End-Date:", 9))
+            {
+                if (cmd && valid)
+                {
+                    g_free (last_end);
+                    last_end = g_strdup (line + 9);
+                    g_free (last_cmd);
+                    last_cmd = cmd;
+                    cmd = NULL;
+                }
+            }
+            g_free (line);
         }
-        fclose (fp);
+        g_object_unref (dis);
+        g_free (cmd);
+
+        // loop exits when last_end has a value in it, or if there is no valid stream any more
     }
 
-    if (last_start)
+    if (last_end)
     {
-        if (sscanf (last_start + 12, "%d-%d-%d %d:%d:%d", &yr, &mo, &dy, &hr, &mi, &sc) == 6)
+        if (sscanf (last_end, "%d-%d-%d %d:%d:%d", &yr, &mo, &dy, &hr, &mi, &sc) == 6)
         {
             td = g_date_time_new (tz, yr, mo, dy, hr, mi, sc);
             if (td)
@@ -201,91 +267,16 @@ static gint64 get_last_update_apt (char **type)
                 g_date_time_unref (td);
             }
         }
+        g_free (last_end);
     }
 
-    g_free (line);
-    g_free (start);
-    g_free (last_start);
+    if (res) *type = last_cmd;
+    else g_free (last_cmd);
+
     g_time_zone_unref (tz);
     g_regex_unref (re);
 
     return res;
-}
-
-static void get_last_update (PkClient *client, GAsyncResult *res, gpointer data)
-{
-    PkResults *results;
-    PkError *pkerror;
-    GError *error = NULL;
-    int i;
-    const char *cmd;
-    char *lastcmd = NULL, *lastapt = NULL, *ts, *lbl;
-    GDateTime *td;
-    gint64 t_up = 0, t_apt = 0;
-    GtkWidget *wid;
-    GPtrArray *array;
-    PkTransactionPast *trans;
-
-    results = pk_client_generic_finish (client, res, &error);
-    if (!error)
-    {
-        pkerror = pk_results_get_error_code (results);
-        if (!pkerror)
-        {
-            array = pk_results_get_transaction_array (results);
-            for (i = 0; i < array->len; i++)
-            {
-                trans = g_ptr_array_index (array, i);
-                if (pk_transaction_past_get_role (trans) == PK_ROLE_ENUM_UPDATE_PACKAGES &&
-                    pk_transaction_past_get_succeeded (trans))
-                {
-                    cmd = pk_transaction_past_get_cmdline (trans);
-                    if (cmd && !strstr (cmd, "rp-prefapps"))
-                    {
-                        g_free (lastcmd);
-                        lastcmd = g_strdup (cmd);
-                        td = g_date_time_new_from_iso8601 (pk_transaction_past_get_timespec (trans), NULL);
-                        if (td)
-                        {
-                            t_up = g_date_time_to_unix (td);
-                            g_date_time_unref (td);
-                        }
-                    }
-                }
-            }
-            g_ptr_array_unref (array);
-        }
-        else g_object_unref (pkerror);
-        g_object_unref (results);
-    }
-    else g_error_free (error);
-    g_object_unref (client);
-
-    wid = (GtkWidget *) gtk_builder_get_object (builder, "lbl_update");
-    t_apt = get_last_update_apt (&lastapt);
-
-    if (t_apt > t_up)
-    {
-        // apt update was more recent than PackageKit
-        t_up = t_apt;
-        g_free (lastcmd);
-        lastcmd = lastapt;
-        lastapt = NULL;
-    }
-
-    if (t_up)
-    {
-        td = g_date_time_new_from_unix_utc (t_up);
-        ts = g_date_time_format (td, "%x %X");
-        lbl = g_strdup_printf (_("%s UTC (%s)"), ts, lastcmd);
-        gtk_label_set_text (GTK_LABEL (wid), lbl);
-        g_free (ts);
-        g_free (lbl);
-        g_date_time_unref (td);
-    }
-
-    g_free (lastapt);
-    g_free (lastcmd);
 }
 
 /*----------------------------------------------------------------------------*/
@@ -297,10 +288,9 @@ static void init_config (void)
     GtkWidget *wid;
     unsigned long memsize;
     char *buf;
-    PkClient *client = pk_client_new ();
-
-    // query PackageKit for the update history
-    pk_client_get_old_transactions_async (client, 0, NULL, NULL, NULL, (GAsyncReadyCallback) get_last_update, NULL);
+    char *upcmd = NULL, *uptime;
+    GDateTime *td;
+    gint64 t_up;
 
     if (!read_label_from_file ("lbl_platform", "/sys/firmware/devicetree/base/model", NULL))
         read_label_from_file ("lbl_platform", "/sys/class/dmi/id/product_name", NULL);
@@ -322,6 +312,25 @@ static void init_config (void)
             buf = g_strdup_printf (_("%lu MB"), memsize);
         gtk_label_set_text (GTK_LABEL (wid), buf);
         g_free (buf);
+    }
+
+    t_up = get_last_update_apt (&upcmd);
+    if (t_up)
+    {
+        td = g_date_time_new_from_unix_utc (t_up);
+        uptime = g_date_time_format (td, "%x %X");
+        g_date_time_unref (td);
+
+        buf = g_strdup_printf (_("%s UTC"), uptime);
+        g_free (uptime);
+
+        wid = (GtkWidget *) gtk_builder_get_object (builder, "lbl_update");
+        gtk_label_set_text (GTK_LABEL (wid), buf);
+        g_free (buf);
+
+        wid = (GtkWidget *) gtk_builder_get_object (builder, "lbl_updateby");
+        gtk_label_set_text (GTK_LABEL (wid), upcmd);
+        g_free (upcmd);
     }
 }
 

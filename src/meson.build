@@ -12,9 +12,8 @@ executable ('rpcc', sources, dependencies: deps, c_args : proj_args, install: tr
 
 plugin_name = 'rpcc_about'
 udev=dependency('libudev')
-packagekit = dependency('packagekit-glib2')
 
-shared_module (plugin_name, 'about.c', dependencies: [ deps, udev, packagekit ], install: true,
+shared_module (plugin_name, 'about.c', dependencies: [ deps, udev ], install: true,
   install_dir: get_option('libdir') / 'rpcc',
   c_args : [ '-DPACKAGE_DATA_DIR="' + resource_dir + '"', '-DGETTEXT_PACKAGE="' + gettext_package + '"', '-DPLUGIN_NAME="' + plugin_name + '"' ]
 )
